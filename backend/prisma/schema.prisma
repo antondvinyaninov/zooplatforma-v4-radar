@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  vkId      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  posts     Post[]
+}
+
+model Post {
+  id          Int       @id @default(autoincrement())
+  content     String
+  tag         String?
+  media       Json      @default("[]")
+  status      String    @default("pending")
+  publishDate DateTime?
+  vkPostId    String?
+  chatLink    String?
+  cityId      Int?      
+  cityName    String?
+  regionName  String?
+  groupId     String?
+  community   Community? @relation(fields: [groupId], references: [id])
+  authorId    Int
+  author      User      @relation(fields: [authorId], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+model Community {
+  id               String   @id // VK group_id
+  accessToken      String
+  name             String?
+  avatarUrl        String?
+  acceptCrossPosts Boolean  @default(false)
+  cityId           Int?
+  cityName         String?
+  regionName       String?
+  dutyAdminId      String?
+  notifyAdminIds   String[]
+  acceptedTags     String[] @default(["Найден", "Потерян", "Ищет дом", "Сборы", "Инфо"])
+  createdAt        DateTime @default(now())
+  posts            Post[]
+}

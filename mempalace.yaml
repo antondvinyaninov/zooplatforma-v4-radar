@@ -1,0 +1,12 @@
+wing: vk_mini_app_full
+rooms:
+- name: vk_post_app
+  description: Files from vk_post_app/
+- name: uploads
+  description: Files from uploads/
+- name: backend
+  description: Files from backend/
+- name: general
+  description: Files that don't fit other rooms
+- name: agent
+  description: Files from .agent/
