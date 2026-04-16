@@ -1,7 +1,8 @@
 import { FC, useEffect, useState } from 'react';
-import { Panel, PanelHeader, PanelHeaderBack, Placeholder, Button, Group, RichCell, Avatar, Spinner } from '@vkontakte/vkui';
+import { Panel, PanelHeader, PanelHeaderBack, Placeholder, Button, Group, SimpleCell, Avatar, Spinner } from '@vkontakte/vkui';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 import { vkFetch } from '../utils/api';
+import { MediaGrid } from '../components/MediaGrid';
 
 interface Post {
   id: number;
@@ -10,6 +11,7 @@ interface Post {
   author: {
     vkId: string;
   };
+  media?: {url: string; type: string}[];
 }
 
 export const Feed: FC<{ id: string }> = ({ id }) => {
@@ -50,15 +52,26 @@ export const Feed: FC<{ id: string }> = ({ id }) => {
       ) : (
         <Group>
           {posts.map(post => (
-            <RichCell
-              key={post.id}
-              before={<Avatar size={48} src={`https://vk.com/images/camera_50.png`} />}
-              subtitle={new Date(post.createdAt).toLocaleString()}
-            >
-              <div style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
-                {post.content}
+            <div key={post.id} style={{ background: 'var(--vkui--color_background_content)', marginBottom: 12, paddingBottom: 12, borderRadius: 12 }}>
+              <SimpleCell
+                before={<Avatar size={44} src={`https://vk.com/images/camera_50.png`} />}
+                subtitle={new Date(post.createdAt).toLocaleString()}
+              >
+                Без подписи
+              </SimpleCell>
+              
+              <div style={{ padding: '0 16px' }}>
+                <div style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap', marginBottom: 8, fontSize: 15 }}>
+                  {post.content}
+                </div>
+                
+                {post.media && post.media.length > 0 && (
+                  <div style={{ marginTop: '12px' }}>
+                    <MediaGrid media={post.media} />
+                  </div>
+                )}
               </div>
-            </RichCell>
+            </div>
           ))}
           <div style={{ padding: 16 }}>
             <Button size="l" stretched onClick={() => routeNavigator.push('/create_post')}>

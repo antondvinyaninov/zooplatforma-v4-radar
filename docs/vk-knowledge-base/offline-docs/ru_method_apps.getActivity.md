@@ -1,0 +1,9 @@
+# Документация VK: https://dev.vk.com/ru/method/apps.getActivity
+
+You need to enable JavaScript to run this app.
+
+![Top.Mail.Ru](https://top-fwz1.mail.ru/counter?id=3297213;js=na)
+
+# 404
+
+## Страница не найдена

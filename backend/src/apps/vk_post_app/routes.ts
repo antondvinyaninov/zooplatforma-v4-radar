@@ -88,9 +88,11 @@ router.get('/posts/moderation', async (req, res) => {
     const groupId = req.query.vk_group_id || req.body.vk_group_id;
     if (!groupId) return res.status(400).json({ error: 'Missing vk_group_id' });
 
+    const statusFilter = req.query.status as string || 'pending';
+
     // В реальном приложении здесь должна быть проверка роли администратора
     const posts = await prisma.post.findMany({
-      where: { status: 'pending', groupId: String(groupId) },
+      where: { status: statusFilter, groupId: String(groupId) },
       orderBy: { createdAt: 'asc' },
       include: { author: true }
     });
@@ -101,6 +103,111 @@ router.get('/posts/moderation', async (req, res) => {
   }
 });
 
+// Обновить текст и тег поста
+router.patch('/posts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content, tag } = req.body;
+    
+    const post = await prisma.post.update({
+      where: { id: Number(id) },
+      data: { content, tag },
+      include: { author: true }
+    });
+    res.json(post);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update post' });
+  }
+});
+
+// Свапнуть время публикации двух постов (для Drag and Drop)
+router.patch('/posts/swap-time', async (req, res) => {
+  try {
+    const { activeId, overId } = req.body;
+    if (!activeId || !overId) {
+      return res.status(400).json({ error: 'Missing activeId or overId' });
+    }
+
+    const post1 = await prisma.post.findUnique({ where: { id: parseInt(activeId) } });
+    const post2 = await prisma.post.findUnique({ where: { id: parseInt(overId) } });
+
+    if (!post1 || !post2) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    // Меняем publishDate (и createdAt как фоллбэк порядок) местами
+    await prisma.$transaction([
+      prisma.post.update({
+        where: { id: post1.id },
+        data: { 
+          publishDate: post2.publishDate,
+          createdAt: post2.createdAt // Свапаем и createdAt, так как сортировка по нему
+        }
+      }),
+      prisma.post.update({
+        where: { id: post2.id },
+        data: { 
+          publishDate: post1.publishDate,
+          createdAt: post1.createdAt
+        }
+      })
+    ]);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to swap dates' });
+  }
+});
+
+// Расчет следующего свободного слота
+async function getNextAvailableSlot(communityId: string) {
+  const community = await prisma.community.findUnique({ where: { id: communityId } });
+  if (!community) return new Date();
+
+  const intervalMinutes = community.scheduleIntervalMinutes || 60;
+  const startParts = community.scheduleStartTime.split(':').map(Number);
+  const endParts = community.scheduleEndTime.split(':').map(Number);
+
+  const startMinutes = startParts[0] * 60 + startParts[1];
+  const endMinutes = endParts[0] * 60 + endParts[1];
+
+  const now = new Date();
+  
+  // Создаем будущие слоты на 14 дней вперед
+  const availableSlots: number[] = [];
+  for (let i = 0; i < 14; i++) {
+    const slotDate = new Date();
+    slotDate.setDate(now.getDate() + i);
+    slotDate.setHours(0, 0, 0, 0);
+    
+    for (let currentMinutes = startMinutes; currentMinutes <= endMinutes; currentMinutes += intervalMinutes) {
+      const slotTime = new Date(slotDate.getTime() + currentMinutes * 60000);
+      if (slotTime > now) {
+        availableSlots.push(slotTime.getTime());
+      }
+    }
+  }
+
+  // Получаем занятые слоты
+  const occupiedPosts = await prisma.post.findMany({
+    where: { groupId: communityId, status: { in: ['approved', 'published'] }, publishDate: { not: null } },
+    select: { publishDate: true }
+  });
+  
+  // Допуск ±5 минут для учета погрешностей
+  const isOccupied = (slotTime: number) => {
+    return occupiedPosts.some(p => Math.abs(p.publishDate!.getTime() - slotTime) < + 300000);
+  };
+
+  for (const slot of availableSlots) {
+    if (!isOccupied(slot)) return new Date(slot);
+  }
+
+  return new Date(); // fallback
+}
+
 // Изменить статус поста (модерация)
 router.patch('/posts/:id/status', async (req, res) => {
   try {
@@ -110,11 +217,19 @@ router.patch('/posts/:id/status', async (req, res) => {
       return res.status(400).json({ error: 'Invalid status' });
     }
 
+    let targetPublishDate = publishDate ? new Date(publishDate) : null;
+    
+    // Auto-slotting 
+    const currentPost = await prisma.post.findUnique({ where: { id: Number(id) } });
+    if (status === 'approved' && !targetPublishDate && currentPost?.groupId) {
+       targetPublishDate = await getNextAvailableSlot(currentPost.groupId);
+    }
+
     let post = await prisma.post.update({
       where: { id: Number(id) },
       data: { 
         status, 
-        publishDate: publishDate ? new Date(publishDate) : null 
+        ...(status !== 'rejected' && targetPublishDate ? { publishDate: targetPublishDate } : {})
       },
       include: { author: true }
     });
@@ -135,20 +250,30 @@ router.patch('/posts/:id/status', async (req, res) => {
           return path.join(__dirname, '../../../uploads', filename);
         });
 
-        // Добавляем авторство к тексту поста
-        let finalContent = `${post.content}\n\nУникальный номер: #${post.id}\nПредложил: @id${post.author.vkId} (Автор)`;
-        
+        // Формируем текст поста
+        let finalContent = `${post.content}`;
+
+        if (post.tag) {
+          finalContent = `#${post.tag} | ${finalContent}`;
+        }
+
+        finalContent += `\n\nПредложил: @id${post.author.vkId}`;
+
         if (post.chatLink) {
-          finalContent += `\n💬 Чат помощи: ${post.chatLink}`;
+          finalContent += `\n💬 Чат: ${post.chatLink}`;
         }
-        
         if (community?.dutyAdminId) {
-          finalContent += `\nПо всем вопросам: ${community.dutyAdminId}`;
+          finalContent += `\nПо вопросам: @id${community.dutyAdminId}`;
         }
-        if (community?.cityName) {
+        if (post.cityName) {
+          finalContent += `\n#${post.cityName.replace(/\s+/g, '')}`;
+          if (post.regionName) finalContent += ` (${post.regionName})`;
+        } else if (community?.cityName) {
           finalContent += `\n#${community.cityName.replace(/\s+/g, '')}`;
           if (community?.regionName) finalContent += ` (${community.regionName})`;
         }
+
+        finalContent += `\n#объявление${post.id}`;
 
         const vkPostId = await publishVkPost(
           community.id,
@@ -166,7 +291,7 @@ router.patch('/posts/:id/status', async (req, res) => {
           });
         }
       } catch (vkError) {
-        console.error('VK Post failed:', vkError);
+        console.error(`VK Post failed for group ${community?.id}:`, vkError);
       }
     }
 
@@ -200,14 +325,15 @@ router.post('/community/token', async (req, res) => {
 // Обновить данные сообщества (город, админ, уведомления, кросс-постинг, теги)
 router.patch('/community/:id', async (req, res) => {
   const { id } = req.params;
-  const { cityId, cityName, regionName, dutyAdminId, notifyAdminIds, acceptCrossPosts, acceptedTags } = req.body;
+  const { cityId, cityName, regionName, dutyAdminId, notifyAdminIds, acceptCrossPosts, acceptedTags, scheduleIntervalMinutes, scheduleStartTime, scheduleEndTime } = req.body;
 
   try {
     let name = req.body.name;
     let avatarUrl = req.body.avatarUrl;
 
-    // Автоматически подтягиваем название и аватар группы из ВКонтакте, если их нет
-    const token = process.env.VK_MAIN_GROUP_TOKEN || process.env.VK_GROUP_TOKEN;
+    // Автоматически подтягиваем название и аватар группы из ВКонтакте
+    // Используем сервисный ключ (не требует прав группы) или глобальный токен
+    const token = process.env.VK_SERVICE_KEY || process.env.VK_MAIN_GROUP_TOKEN || process.env.VK_GROUP_TOKEN;
     if (token) {
       try {
         const info = await callVkApi('groups.getById', { group_id: id }, token);
@@ -218,9 +344,15 @@ router.patch('/community/:id', async (req, res) => {
       } catch (e) { console.error('Failed to fetch group info:', e); }
     }
 
-    const community = await prisma.community.update({
+    const data: any = { cityId, cityName, regionName, dutyAdminId, notifyAdminIds, acceptCrossPosts, name, avatarUrl, acceptedTags, scheduleIntervalMinutes, scheduleStartTime, scheduleEndTime };
+    const community = await prisma.community.upsert({
       where: { id: String(id) },
-      data: { cityId, cityName, regionName, dutyAdminId, notifyAdminIds, acceptCrossPosts, name, avatarUrl, acceptedTags }
+      update: data,
+      create: {
+        id: String(id),
+        accessToken: "", // Will be filled later or might cause issues if required for posting, but allows settings save
+        ...data
+      }
     });
     res.json(community);
   } catch (error) {
@@ -382,10 +514,12 @@ router.post('/posts', async (req, res) => {
         });
         const notifyIds = community?.notifyAdminIds;
         if (notifyIds && notifyIds.length > 0) {
-          const token = process.env.VK_MAIN_GROUP_TOKEN || process.env.VK_GROUP_TOKEN;
+          // Используем токен конкретной группы — только она имеет право отправлять сообщения от своего имени
+          const token = community?.accessToken || process.env.VK_MAIN_GROUP_TOKEN || process.env.VK_GROUP_TOKEN;
           if (token) {
-            const groupInfo = await callVkApi('groups.getById', { group_id: gId }, token);
-            const groupName = groupInfo?.[0]?.name || 'вашем сообществе';
+            const serviceToken = process.env.VK_SERVICE_KEY || process.env.VK_MAIN_GROUP_TOKEN || process.env.VK_GROUP_TOKEN;
+            const groupInfo = serviceToken ? await callVkApi('groups.getById', { group_id: gId }, serviceToken).catch(() => null) : null;
+            const groupName = groupInfo?.[0]?.name || `сообщество #${gId}`;
 
             await callVkApi('messages.send', {
               user_ids: notifyIds.join(','),
@@ -393,7 +527,7 @@ router.post('/posts', async (req, res) => {
                        `Текст: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}\n\n` +
                        `Автор: @id${vkId}\n` +
                        `👉 Ссылка на модерацию: https://vk.com/app54490430_-${gId}#moderation`,
-              random_id: 0
+              random_id: Math.floor(Math.random() * 1e9)
             }, token);
           }
         }
@@ -411,15 +545,19 @@ router.post('/posts', async (req, res) => {
   }
 });
 
-// Загрузить медиафайл
-router.post('/upload', upload.single('media'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
+// Загрузить медиафайлы
+router.post('/upload', upload.array('media', 10), (req, res) => {
+  const files = req.files as Express.Multer.File[];
+  if (!files || files.length === 0) {
+    return res.status(400).json({ error: 'No files uploaded' });
   }
-  // Для локальной разработки хардкодим localhost:3000
-  const fileUrl = `http://localhost:3000/uploads/${req.file.filename}`;
-  const type = req.file.mimetype.startsWith('image') ? 'image' : 'video';
-  res.json({ url: fileUrl, type });
+  
+  const results = files.map(file => ({
+    url: `http://localhost:3000/uploads/${file.filename}`,
+    type: file.mimetype.startsWith('image') ? 'image' : 'video'
+  }));
+  
+  res.json(results);
 });
 
 export default router;

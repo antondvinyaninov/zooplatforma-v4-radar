@@ -32,7 +32,7 @@ export const App = () => {
   }, []);
 
   return (
-    <SplitLayout>
+    <SplitLayout popout={popout}>
       <SplitCol>
         <View activePanel={activePanel}>
           <Home id={DEFAULT_VIEW_PANELS.HOME} />
@@ -40,7 +40,6 @@ export const App = () => {
           <CreatePost id={DEFAULT_VIEW_PANELS.CREATE_POST} />
         </View>
       </SplitCol>
-      {popout}
     </SplitLayout>
   );
 };

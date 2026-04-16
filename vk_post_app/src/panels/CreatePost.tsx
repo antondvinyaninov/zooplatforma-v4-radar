@@ -1,11 +1,12 @@
 import { FC, useState, useEffect } from 'react';
 import { 
   Panel, PanelHeader, PanelHeaderBack, FormItem, Textarea, 
-  Button, Group, Select, File, IconButton, CustomSelect, CustomSelectOption
+  Button, Group, Select, File, CustomSelect, CustomSelectOption
 } from '@vkontakte/vkui';
-import { Icon24Camera, Icon24Dismiss } from '@vkontakte/icons';
+import { Icon24Camera } from '@vkontakte/icons';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 import { vkFetch } from '../utils/api';
+import { MediaGrid } from '../components/MediaGrid';
 
 export const CreatePost: FC<{ id: string }> = ({ id }) => {
   const routeNavigator = useRouteNavigator();
@@ -53,22 +54,20 @@ export const CreatePost: FC<{ id: string }> = ({ id }) => {
     setIsUploading(true);
     try {
       const files = Array.from(e.target.files);
-      const newMediaItems = [];
-
-      for (const file of files) {
-        const formData = new FormData();
+      const formData = new FormData();
+      files.forEach(file => {
         formData.append('media', file);
+      });
 
-        const data = await vkFetch('/upload', {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (data.url) {
-          newMediaItems.push({ url: data.url, type: data.type });
-        }
+      const response = await vkFetch('/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      // Бэкенд теперь возвращает массив {url, type}[]
+      if (Array.isArray(response)) {
+        setMedia(prev => [...prev, ...response]);
       }
-      setMedia(prev => [...prev, ...newMediaItems]);
     } catch (err) {
       console.error('Ошибка загрузки медиа:', err);
     } finally {
@@ -158,37 +157,8 @@ export const CreatePost: FC<{ id: string }> = ({ id }) => {
 
         <FormItem top="Фотографии и Видео">
           {media.length > 0 && (
-            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '12px' }}>
-              {media.map((item, idx) => (
-                <div key={idx} style={{ position: 'relative', width: 100, height: 100, flexShrink: 0 }}>
-                  {item.type === 'video' ? (
-                    <video 
-                      src={item.url} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} 
-                      muted 
-                      playsInline 
-                      loop
-                      autoPlay
-                    />
-                  ) : (
-                    <img 
-                      src={item.url} 
-                      alt="Upload preview" 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} 
-                    />
-                  )}
-                  <IconButton 
-                    onClick={() => removeMedia(idx)}
-                    style={{ 
-                      position: 'absolute', top: 4, right: 4, 
-                      backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff', 
-                      borderRadius: '50%', padding: 4 
-                    }}
-                  >
-                    <Icon24Dismiss width={16} height={16} />
-                  </IconButton>
-                </div>
-              ))}
+            <div style={{ marginBottom: '12px' }}>
+              <MediaGrid media={media} onRemove={removeMedia} />
             </div>
           )}
           

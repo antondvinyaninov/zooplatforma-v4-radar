@@ -51,6 +51,9 @@ model Community {
   dutyAdminId      String?
   notifyAdminIds   String[]
   acceptedTags     String[] @default(["Найден", "Потерян", "Ищет дом", "Сборы", "Инфо"])
+  scheduleIntervalMinutes Int @default(60)
+  scheduleStartTime   String   @default("09:00")
+  scheduleEndTime     String   @default("21:00")
   createdAt        DateTime @default(now())
   posts            Post[]
 }

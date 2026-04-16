@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import bridgePkg, { UserInfo } from '@vkontakte/vk-bridge';
 import { vkFetch } from '../utils/api';
 import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
+import { ModerationPostCard } from '../components/ModerationPostCard';
 import { 
   SplitLayout, 
   SplitCol, 
@@ -23,12 +24,16 @@ import {
   Avatar,
   File,
   Input,
+  Spinner,
   CustomSelect,
   CustomSelectOption,
   Checkbox,
-  Accordion
+  Accordion,
+  SegmentedControl
 } from '@vkontakte/vkui';
 import { Icon20CheckCircleOn, Icon20ErrorCircleOutline, Icon24CameraOutline, Icon16Clear, Icon20InfoCircleOutline, Icon24WriteOutline, Icon24DeleteOutline, Icon24Settings, Icon24ShareOutline, Icon24NotificationOutline } from '@vkontakte/icons';
+
+import { ScheduleList } from '../components/ScheduleList';
 
 const bridge = bridgePkg && 'default' in bridgePkg ? (bridgePkg as any).default : bridgePkg;
 
@@ -43,7 +48,9 @@ export const Home = ({ id }: { id: string }) => {
   const [groupId, setGroupId] = useState<string | null>(null);
   const [groupRole, setGroupRole] = useState<string | null>(null);
   const [user, setUser] = useState<UserInfo | null>(null);
+  const [moderationTab, setModerationTab] = useState<'pending'|'approved'|'published'>('pending');
   const [posts, setPosts] = useState<any[]>([]);
+  const [isFetchingPosts, setIsFetchingPosts] = useState(false);
   const [media, setMedia] = useState<{url: string, type: string, file?: File}[]>([]);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -59,6 +66,9 @@ export const Home = ({ id }: { id: string }) => {
   const [notifyAdminIds, setNotifyAdminIds] = useState<string[]>([]);
   const [acceptCrossPosts, setAcceptCrossPosts] = useState(false);
   const [acceptedTags, setAcceptedTags] = useState<string[]>(['Найден', 'Потерян', 'Ищет дом', 'Сборы', 'Инфо']);
+  const [scheduleIntervalMinutes, setScheduleIntervalMinutes] = useState(60);
+  const [scheduleStartTime, setScheduleStartTime] = useState('09:00');
+  const [scheduleEndTime, setScheduleEndTime] = useState('21:00');
   const [partnerGroups, setPartnerGroups] = useState<any[]>([]);
   const [selectedPartnerGroups, setSelectedPartnerGroups] = useState<string[]>([]);
   const [chatLink, setChatLink] = useState('');
@@ -78,24 +88,35 @@ export const Home = ({ id }: { id: string }) => {
   }, [citySearchQuery]);
 
   useEffect(() => {
-    const endpoint = activeTab === 'moderation' ? '/posts/moderation' : '/posts/my';
-    vkFetch(endpoint)
-      .then(data => {
-        if (Array.isArray(data)) {
-          // Map DB schema to frontend expectation
-          const formattedPosts = data.map((p: any) => ({
-            id: p.id,
-            text: p.content,
-            media: p.media,
-            tag: p.tag,
-            date: p.createdAt,
-            status: p.status
-          }));
-          setPosts(formattedPosts);
-        }
-      })
-      .catch((e) => console.error("API Error", e));
-  }, [activeTab]);
+    setPosts([]);
+    setIsFetchingPosts(true);
+
+    if (activeTab === 'moderation') {
+      vkFetch(`/posts/moderation?status=${moderationTab}`)
+        .then(data => {
+          if (Array.isArray(data)) setPosts(data);
+        })
+        .catch((e) => console.error("API Error", e))
+        .finally(() => setIsFetchingPosts(false));
+    } else if (activeTab === 'ads') {
+      vkFetch('/posts/my')
+        .then(data => {
+          if (Array.isArray(data)) {
+            const formattedPosts = data.map((p: any) => ({
+              id: p.id,
+              text: p.content,
+              media: p.media,
+              tag: p.tag,
+              date: p.createdAt,
+              status: p.status
+            }));
+            setPosts(formattedPosts);
+          }
+        })
+        .catch((e) => console.error("API Error", e))
+        .finally(() => setIsFetchingPosts(false));
+    }
+  }, [activeTab, moderationTab]);
 
   useEffect(() => {
     if (activeTab === 'settings' && groupId) {
@@ -108,6 +129,9 @@ export const Home = ({ id }: { id: string }) => {
              if (res.community.acceptedTags?.length > 0) setAcceptedTags(res.community.acceptedTags);
              if (res.community.cityId) setSelectedCity({ id: res.community.cityId, title: res.community.cityName, region: res.community.regionName });
              if (res.community.dutyAdminId) setDutyAdminId(res.community.dutyAdminId);
+             if (res.community.scheduleIntervalMinutes) setScheduleIntervalMinutes(res.community.scheduleIntervalMinutes);
+             if (res.community.scheduleStartTime) setScheduleStartTime(res.community.scheduleStartTime);
+             if (res.community.scheduleEndTime) setScheduleEndTime(res.community.scheduleEndTime);
            }
         }
       }).catch(console.error);
@@ -115,18 +139,9 @@ export const Home = ({ id }: { id: string }) => {
   }, [activeTab, groupId]);
 
   useEffect(() => {
-    if (activeTab === 'ads' && showAddForm && selectedCity?.id) {
-      vkFetch(`/community/city/${selectedCity.id}`).then(res => {
-        if (Array.isArray(res)) {
-          const filtered = res.filter(g => String(g.id) !== String(groupId));
-          setPartnerGroups(filtered);
-          setSelectedPartnerGroups(filtered.map(g => String(g.id))); // По умолчанию рассылаем всем
-        }
-      });
-    } else {
-      setPartnerGroups([]);
-      setSelectedPartnerGroups([]);
-    }
+    // Кросс-постинг убран — очищаем на всякий случай
+    setPartnerGroups([]);
+    setSelectedPartnerGroups([]);
   }, [activeTab, showAddForm, selectedCity, groupId]);
 
   useEffect(() => {
@@ -187,8 +202,7 @@ export const Home = ({ id }: { id: string }) => {
                   }
                 }
 
-                // 2. Публикуем пост с прикрепленными URLs
-                const targetGroups = Array.from(new Set([String(groupId), ...selectedPartnerGroups]));
+                // 2. Публикуем пост только в текущую группу
                 const p = await vkFetch('/posts', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -196,7 +210,7 @@ export const Home = ({ id }: { id: string }) => {
                     content: postText, 
                     tag: selectedTag, 
                     media: uploadedMedia,
-                    groupIds: targetGroups,
+                    groupIds: [String(groupId)],
                     cityId: selectedCity?.id || null,
                     cityName: selectedCity?.title || null,
                     regionName: selectedCity?.region || null,
@@ -262,6 +276,19 @@ export const Home = ({ id }: { id: string }) => {
     </ModalRoot>
   );
 
+  const handleArchivePost = async (id: number) => {
+    try {
+      await vkFetch(`/posts/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'published' })
+      });
+      setPosts(prev => prev.filter(p => p.id !== id));
+    } catch (e) {
+      console.error(e);
+      alert('Ошибка при архивации поста');
+    }
+  };
+
   return (
     <>
       <SplitLayout>
@@ -279,21 +306,6 @@ export const Home = ({ id }: { id: string }) => {
                       }
                     }
                   `}</style>
-                  <div style={{ 
-                    background: 'var(--vkui--color_background_content)', 
-                    borderRadius: 12, 
-                    overflow: 'hidden', 
-                    flexShrink: 0,
-                    boxShadow: 'var(--vkui--elevation1, 0px 0px 2px 0px rgba(0, 0, 0, 0.08), 0px 4px 16px 0px rgba(0, 0, 0, 0.04))'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', height: '100%', padding: '0 16px' }}>
-                      <Avatar size={28} src="https://zooplatforma.ru/favicon.svg" />
-                      <div className="hide-on-mobile">
-                        <Title level="3" weight="2" style={{ margin: 0 }}>ЗооПлатформа</Title>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* 2. Карточка вкладок и переключателя темы */}
                   <div style={{ 
                     background: 'var(--vkui--color_background_content)', 
@@ -731,33 +743,6 @@ export const Home = ({ id }: { id: string }) => {
                     />
                   </FormItem>
 
-                  {partnerGroups.length > 0 && (
-                    <FormItem top="Предложить в другие группы" bottom="Некоторые группы могут не принимать вашу категорию объявления">
-                      {partnerGroups.map(g => {
-                        const isSupported = !selectedTag || !g.acceptedTags || g.acceptedTags.length === 0 || g.acceptedTags.includes(selectedTag);
-                        return (
-                          <Checkbox
-                            key={g.id}
-                            disabled={!isSupported}
-                            checked={isSupported && selectedPartnerGroups.includes(String(g.id))}
-                            onChange={(e) => {
-                              const idStr = String(g.id);
-                              if (e.target.checked) setSelectedPartnerGroups(prev => [...prev, idStr]);
-                              else setSelectedPartnerGroups(prev => prev.filter(pId => pId !== idStr));
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, opacity: isSupported ? 1 : 0.5 }}>
-                              {g.avatarUrl && <Avatar size={24} src={g.avatarUrl} />}
-                              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: 14 }}>{g.name || `Сообщество #${g.id}`}</span>
-                                {!isSupported && <span style={{ fontSize: 12, color: 'var(--vkui--color_text_subhead)' }}>Не принимает "{selectedTag}"</span>}
-                              </div>
-                            </div>
-                          </Checkbox>
-                        );
-                      })}
-                    </FormItem>
-                  )}
 
                   <div style={{ padding: '6px 16px 16px' }}>
                     <MiniInfoCell 
@@ -847,80 +832,62 @@ export const Home = ({ id }: { id: string }) => {
               )}
 
               {activeTab === 'moderation' && (
-                <div style={{ padding: '0 16px 16px' }}>
+                <div style={{ padding: '16px' }}>
+                  <SegmentedControl
+                    size="m"
+                    name="moderationTabs"
+                    options={[
+                      { label: 'Предложенные', value: 'pending' },
+                      { label: 'Расписание', value: 'approved' },
+                      { label: 'Архив', value: 'published' }
+                    ]}
+                    value={moderationTab}
+                    onChange={(v) => setModerationTab(v as any)}
+                    style={{ marginBottom: 16 }}
+                  />
                   <Group mode="card" style={{ borderRadius: 12, overflow: 'hidden' }}>
-                    <Header>Очередь постов</Header>
-                    {posts.length === 0 ? (
+                    <Header>{moderationTab === 'pending' ? 'Очередь постов' : moderationTab === 'approved' ? 'Расписание постов' : 'Архив постов'}</Header>
+                    {isFetchingPosts ? (
+                      <div style={{ padding: '32px 16px', display: 'flex', justifyContent: 'center' }}>
+                        <Spinner size="m" />
+                      </div>
+                    ) : posts.length === 0 ? (
                       <div style={{ padding: '32px 16px', color: 'var(--vkui--color_text_subhead)', textAlign: 'center' }}>
-                        Очередь чиста. Все предложенные записи проверены!
+                        {moderationTab === 'pending' ? 'Очередь чиста. Все предложенные записи проверены!' :
+                         moderationTab === 'approved' ? 'В расписании пока нет постов' :
+                         'Архив пуст'}
+                      </div>
+                    ) : moderationTab === 'approved' ? (
+                      <div style={{ padding: '0 16px 16px' }}>
+                        <ScheduleList
+                          posts={posts}
+                          setPosts={setPosts}
+                          intervalMinutes={scheduleIntervalMinutes}
+                          onContentUpdated={(id: number, content: string) => {
+                            setPosts(prev => prev.map(p => p.id === id ? { ...p, text: content, content } : p));
+                          }}
+                          onArchive={handleArchivePost}
+                        />
                       </div>
                     ) : (
                       <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {posts.map(post => (
-                          <div key={post.id} style={{ 
-                            padding: 16, 
-                            borderRadius: 12, 
-                            background: 'var(--vkui--color_background_content)',
-                            border: '1px solid var(--vkui--color_separator_primary)'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                              <Avatar size={36} src={post.author?.photo_200} initials="🐾" />
-                              <div>
-                                <div style={{ fontSize: 14, fontWeight: 500 }}>
-                                  Пользователь <span style={{color: 'var(--vkui--color_text_subhead)', fontWeight: 400}}>• Запись #{post.id}</span>
-                                </div>
-                                <div style={{ fontSize: 13, color: 'var(--vkui--color_text_subhead)' }}>{post.createdAt ? new Date(post.createdAt).toLocaleString() : 'Неизвестно'}</div>
-                              </div>
-                            </div>
-                            
-                            {post.tag && (
-                              <div style={{ display: 'inline-block', padding: '4px 8px', borderRadius: 8, background: 'var(--vkui--color_background_secondary)', color: 'var(--vkui--color_text_primary)', fontSize: 12, fontWeight: 500, marginBottom: 8, textTransform: 'uppercase' }}>
-                                # {post.tag}
-                              </div>
-                            )}
-
-                            <div style={{ fontSize: 15, lineHeight: 1.4, marginBottom: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                              {post.text}
-                            </div>
-
-                            {post.media && post.media.length > 0 && (
-                              <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                                {post.media.map((item: any, i: number) => (
-                                  <div key={i} style={{ width: 100, height: 100, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--vkui--color_separator_primary)', position: 'relative' }}>
-                                    {item.type === 'video' ? (
-                                      <video src={item.url} style={{ width: '100%', height: '100%', objectFit: 'cover' }} controls controlsList="nodownload" />
-                                    ) : (
-                                      <div style={{ width: '100%', height: '100%', backgroundImage: `url(${item.url})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            
-                            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                              <Button 
-                                mode="primary" 
-                                stretched
-                                onClick={() => {
-                                  setApprovingPostId(post.id);
-                                  setPublishDate('');
-                                  setActiveModal(MODAL_APPROVE);
-                                }}
-                              >
-                                Одобрить
-                              </Button>
-                              <Button 
-                                mode="secondary" 
-                                stretched
-                                onClick={async () => {
-                                  await vkFetch(`/posts/${post.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }) });
-                                  setPosts(posts.filter(p => p.id !== post.id));
-                                }}
-                              >
-                                Отклонить
-                              </Button>
-                            </div>
-                          </div>
+                          <ModerationPostCard
+                            key={post.id}
+                            post={post}
+                            onApprove={(id) => {
+                              setApprovingPostId(id);
+                              setPublishDate('');
+                              setActiveModal(MODAL_APPROVE);
+                            }}
+                            onReject={async (id) => {
+                              await vkFetch(`/posts/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'rejected' }) });
+                              setPosts(posts.filter(p => p.id !== id));
+                            }}
+                            onContentUpdated={(id: number, content: string) => {
+                              setPosts(posts.map(p => p.id === id ? { ...p, content } : p));
+                            }}
+                          />
                         ))}
                       </div>
                     )}
@@ -934,6 +901,16 @@ export const Home = ({ id }: { id: string }) => {
                   
                   {groupRole === 'admin' ? (
                     <>
+                      <div style={{ padding: '0 16px 16px' }}>
+                        <Button 
+                          size="l" 
+                          stretched 
+                          mode="primary" 
+                          onClick={() => routeNavigator.push('/moderation')}
+                        >
+                          Перейти к модерации предложки
+                        </Button>
+                      </div>
                       <Accordion defaultExpanded>
                           <Accordion.Summary>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1048,12 +1025,13 @@ export const Home = ({ id }: { id: string }) => {
                                 }}
                               />
                             </FormItem>
-                            <FormItem top="Кросс-постинг" bottom="Если включено, ваше сообщество предложат авторам в других группах этого города">
+                            <FormItem top="Кросс-постинг" bottom="Пока не используется — кросс-постинг временно отключён">
                               <Checkbox 
                                 checked={acceptCrossPosts}
                                 onChange={(e) => setAcceptCrossPosts(e.target.checked)}
+                                disabled
                               >
-                                <span style={{ fontSize: 15 }}>Принимать объявления из других групп сети в нашем городе</span>
+                                <span style={{ fontSize: 15, color: 'var(--vkui--color_text_secondary)' }}>Принимать объявления из других групп города (скоро)</span>
                               </Checkbox>
                             </FormItem>
                           </Accordion.Content>
@@ -1113,9 +1091,52 @@ export const Home = ({ id }: { id: string }) => {
                               </Button>
                             </div>
                           </Accordion.Content>
-                      </Accordion>
+                       </Accordion>
 
-                      <div style={{ padding: '16px', borderTop: '1px solid var(--vkui--color_separator_primary)' }}>
+                       <Accordion defaultExpanded>
+                          <Accordion.Summary>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <Icon24Settings fill="var(--vkui--color_icon_accent)" />
+                              <span style={{ fontSize: 16, fontWeight: 500 }}>Сетка вещания (Авто-Слоттинг)</span>
+                            </div>
+                          </Accordion.Summary>
+                          <Accordion.Content>
+                            <FormItem top="Интервал публикаций" bottom="Как часто публиковать посты в сетке">
+                              <CustomSelect 
+                                value={String(scheduleIntervalMinutes)}
+                                onChange={e => setScheduleIntervalMinutes(Number(e.target.value) || 60)}
+                                options={[
+                                  { label: 'Каждые 30 минут', value: '30' },
+                                  { label: 'Каждый 1 час', value: '60' },
+                                  { label: 'Каждые 2 часа', value: '120' },
+                                  { label: 'Каждые 3 часа', value: '180' },
+                                  { label: 'Каждые 4 часа', value: '240' },
+                                ]}
+                              />
+                            </FormItem>
+                            <div style={{ display: 'flex', gap: 12 }}>
+                              <FormItem top="Время начала" style={{ flexGrow: 1 }}>
+                                <Input 
+                                  type="time" 
+                                  value={scheduleStartTime}
+                                  onChange={e => setScheduleStartTime(e.target.value)}
+                                />
+                              </FormItem>
+                              <FormItem top="Время окончания" style={{ flexGrow: 1 }}>
+                                <Input 
+                                  type="time" 
+                                  value={scheduleEndTime}
+                                  onChange={e => setScheduleEndTime(e.target.value)}
+                                />
+                              </FormItem>
+                            </div>
+                            <div style={{ padding: '0 16px', color: 'var(--vkui--color_text_subhead)', fontSize: 13 }}>
+                              При одобрении постов система автоматически будет распределять их по свободным окнам в этом диапазоне.
+                            </div>
+                          </Accordion.Content>
+                       </Accordion>
+
+                       <div style={{ padding: '16px', borderTop: '1px solid var(--vkui--color_separator_primary)' }}>
                         <Button 
                           mode="primary" 
                           size="l" 
@@ -1133,7 +1154,10 @@ export const Home = ({ id }: { id: string }) => {
                                   dutyAdminId: dutyAdminId || null,
                                   notifyAdminIds,
                                   acceptCrossPosts,
-                                  acceptedTags
+                                  acceptedTags,
+                                  scheduleIntervalMinutes,
+                                  scheduleStartTime,
+                                  scheduleEndTime
                                 })
                               });
                               alert('Профиль сообщества обновлен!');

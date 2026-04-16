@@ -1,0 +1,10 @@
+{
+  "name": "vk-docs-spider",
+  "version": "1.0.0",
+  "main": "spider.js",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^22.0.0",
+    "turndown": "^7.1.3"
+  }
+}
