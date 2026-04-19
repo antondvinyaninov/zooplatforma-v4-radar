@@ -90,7 +90,8 @@ export const Radar = ({ id }: { id: string }) => {
         center: [initialPos.lng, initialPos.lat],
         style: initialStyle,
         hash: false,
-        attributionControl: false
+        attributionControl: false,
+        accessToken: '0d0de26be2e82dd183b246cb465db703d284268f4fb61fd89642d9fff3e7564e'
       });
 
       mapRef.current = map;

@@ -1,7 +1,8 @@
-// Базовый URL нашего бэкенда. Берем текущий hostname, чтобы API работало при тесте с телефона по локальной сети
-const API_BASE_URL = window.location.hostname === 'localhost' 
+// В продакшене фронт и бэк живут на одном сервере, поэтому используем относительный путь.
+// На localhost нужен абсолютный путь с портом 3000 (Dev-сервер Vite на 5173, бэк на 3000).
+const API_BASE_URL = window.location.hostname === 'localhost'
   ? 'http://localhost:3000/api/vk_post_app'
-  : `http://${window.location.hostname}:3000/api/vk_post_app`;
+  : '/api/vk_post_app';
 
 /**
  * Обертка над fetch для VK Mini Apps
