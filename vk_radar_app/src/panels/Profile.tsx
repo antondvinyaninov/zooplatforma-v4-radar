@@ -178,9 +178,27 @@ export const Profile = ({ id }: { id: string }) => {
   useEffect(() => {
     async function init() {
       try {
+        // 1. Читаем из URL (работает в браузере и некоторых версиях ВК)
         const params = new URLSearchParams(window.location.search);
-        setGroupId(params.get('vk_group_id'));
-        setViewerRole(params.get('vk_viewer_role') || 'none');
+        let role = params.get('vk_viewer_role') || 'none';
+        let gId = params.get('vk_group_id');
+
+        // 2. Пробуем получить через VK Bridge — надёжнее в мобильном клиенте ВК
+        try {
+          const launchData = await withTimeout(
+            bridge.send('VKWebAppGetLaunchParams') as Promise<any>,
+            1500
+          );
+          if (launchData) {
+            if (launchData.vk_viewer_role) role = launchData.vk_viewer_role;
+            if (launchData.vk_group_id) gId = String(launchData.vk_group_id);
+          }
+        } catch (launchErr) {
+          console.warn('VKWebAppGetLaunchParams unavailable, using URL params', launchErr);
+        }
+
+        setGroupId(gId);
+        setViewerRole(role);
 
         const [profile, pins, posts] = await Promise.all([
           vkFetch('/profile/me').catch(() => null),
