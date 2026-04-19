@@ -19,11 +19,14 @@ export const validateVkSignature = (req: Request, res: Response, next: NextFunct
         console.warn('⚠️ Используется тестовый секретный ключ. Валидация подписи пропущена.');
         // Извлечем vk_user_id из строки просто для удобства
         const params = new URLSearchParams(launchUrl);
+        const roleFromParams = params.get('vk_viewer_role');
         
         if (!req.body) req.body = {};
         req.body.vk_user_id = params.get('vk_user_id');
         req.body.vk_group_id = params.get('vk_group_id');
-        req.body.vk_viewer_role = params.get('vk_viewer_role') || 'admin'; // В деве считаем админом
+        
+        // В деве принудительно ставим admin, если роль не указана или none
+        req.body.vk_viewer_role = (roleFromParams && roleFromParams !== 'none') ? roleFromParams : 'admin';
         
         // Дублируем в req properties для безопасности
         (req as any).vk_user_id = req.body.vk_user_id;

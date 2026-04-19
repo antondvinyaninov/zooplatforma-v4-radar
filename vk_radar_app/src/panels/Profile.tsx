@@ -178,28 +178,36 @@ export const Profile = ({ id }: { id: string }) => {
   useEffect(() => {
     async function init() {
       try {
-        // 1. Читаем из URL (работает в браузере и некоторых версиях ВК)
+        // 1. Читаем из URL
         const params = new URLSearchParams(window.location.search);
         let role = params.get('vk_viewer_role') || 'none';
         let gId = params.get('vk_group_id');
+        
+        console.log('Launch Params from URL:', { role, gId });
 
-        // 2. Пробуем получить через VK Bridge — надёжнее в мобильном клиенте ВК
+        // 2. Пробуем получить через VK Bridge
         try {
           const launchData = await withTimeout(
             bridge.send('VKWebAppGetLaunchParams') as Promise<any>,
-            1500
+            2000
           );
+          console.log('Launch Params from Bridge:', launchData);
           if (launchData) {
-            if (launchData.vk_viewer_role) role = launchData.vk_viewer_role;
-            if (launchData.vk_group_id) gId = String(launchData.vk_group_id);
+            if (launchData.vk_viewer_role && launchData.vk_viewer_role !== 'none') {
+              role = launchData.vk_viewer_role;
+            }
+            if (launchData.vk_group_id) {
+              gId = String(launchData.vk_group_id);
+            }
           }
         } catch (launchErr) {
-          console.warn('VKWebAppGetLaunchParams unavailable, using URL params', launchErr);
+          console.warn('VKWebAppGetLaunchParams failed', launchErr);
         }
 
         setGroupId(gId);
         setViewerRole(role);
 
+        // ... rest of the fetch logic ...
         const [profile, pins, posts] = await Promise.all([
           vkFetch('/profile/me').catch(() => null),
           vkFetch('/radar/pins/my').catch(() => []),
@@ -216,7 +224,7 @@ export const Profile = ({ id }: { id: string }) => {
         try {
           const bridgeUser = await withTimeout(
             bridge.send('VKWebAppGetUserInfo') as Promise<VkBridgeUserProfile>,
-            1500
+            2000
           );
 
           if (bridgeUser) {
@@ -228,7 +236,7 @@ export const Profile = ({ id }: { id: string }) => {
           console.warn('Failed to fetch VK bridge user info', bridgeError);
         }
       } catch (e) {
-        console.error(e);
+        console.error('Profile init error:', e);
       }
     }
 
