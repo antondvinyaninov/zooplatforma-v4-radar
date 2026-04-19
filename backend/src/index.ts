@@ -27,8 +27,8 @@ app.use('/api/vk_post_app', vkPostAppRoutes);
 const frontendPath = path.join(__dirname, '../public_frontend');
 app.use(express.static(frontendPath));
 
-// Все остальные GET-запросы отдаем React-приложению (чтобы работал роутинг с хешами и путями)
-app.get('*', (req, res) => {
+// Все остальные запросы отдаем React-приложению (чтобы работал роутинг)
+app.use((req, res) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
     return res.status(404).json({ error: 'Route not found' });
   }
