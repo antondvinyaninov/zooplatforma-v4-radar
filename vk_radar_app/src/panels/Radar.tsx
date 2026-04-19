@@ -698,7 +698,7 @@ export const Radar = ({ id }: { id: string }) => {
         */}
 
         {/* Кнопка SOS */}
-        <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10 }}>
+        <div style={{ position: 'absolute', bottom: 220, right: 20, zIndex: 10 }}>
           <div 
             onClick={() => {
               setAddFormData({ title: '', description: '', type: 'sos' });
