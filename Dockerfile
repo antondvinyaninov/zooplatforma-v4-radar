@@ -4,7 +4,7 @@
 FROM node:20-alpine AS build-frontend
 WORKDIR /app
 COPY vk_radar_app/package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 COPY vk_radar_app/ ./
 RUN npm run build
 
