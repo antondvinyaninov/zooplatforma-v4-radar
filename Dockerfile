@@ -54,4 +54,4 @@ EXPOSE 3000
 
 # Для старта в Easypanel мы обычно прогоняем миграции (или db push) и запускаем сервер.
 # Если база управляется отдельно, db push синхронизирует схему.
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && node dist/index.js"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss || echo '⚠️ prisma db push failed, starting server anyway...' && node dist/index.js"]
