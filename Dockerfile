@@ -39,7 +39,7 @@ COPY --from=build-backend /app/src/generated ./src/generated
 
 # Копируем собранный фронтенд в директорию public_frontend, 
 # откуда его будет раздавать наш Express сервер (настроено в src/index.ts)
-COPY --from=build-frontend /app/dist ./public_frontend
+COPY --from=build-frontend /app/build ./public_frontend
 
 # Устанавливаем переменные окружения
 ENV NODE_ENV=production
