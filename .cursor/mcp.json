@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "vkui": {
+      "command": "npx",
+      "args": ["-y", "@vkontakte/vkui-mcp"],
+      "env": {
+        "VKUI_VERSION": "8.1.0"
+      }
+    }
+  }
+}

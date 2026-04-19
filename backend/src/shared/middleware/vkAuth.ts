@@ -15,14 +15,23 @@ export const validateVkSignature = (req: Request, res: Response, next: NextFunct
     const VK_APP_SECRET = process.env.VK_APP_SECRET || 'test_secret_key'; 
     
     // Если секрет тестовый, мы можем временно пропускать проверку для удобства разработки фронта
-    if (VK_APP_SECRET === 'test_secret_key') {
-      console.warn('⚠️ Используется тестовый секретный ключ. Валидация подписи пропущена.');
-      // Извлечем vk_user_id из строки просто для удобства
-      const params = new URLSearchParams(launchUrl);
-      req.body = req.body || {};
-      req.body.vk_user_id = params.get('vk_user_id');
-      return next();
-    }
+      if (VK_APP_SECRET === 'test_secret_key') {
+        console.warn('⚠️ Используется тестовый секретный ключ. Валидация подписи пропущена.');
+        // Извлечем vk_user_id из строки просто для удобства
+        const params = new URLSearchParams(launchUrl);
+        
+        if (!req.body) req.body = {};
+        req.body.vk_user_id = params.get('vk_user_id');
+        req.body.vk_group_id = params.get('vk_group_id');
+        req.body.vk_viewer_role = params.get('vk_viewer_role') || 'admin'; // В деве считаем админом
+        
+        // Дублируем в req properties для безопасности
+        (req as any).vk_user_id = req.body.vk_user_id;
+        (req as any).vk_group_id = req.body.vk_group_id;
+        (req as any).vk_viewer_role = req.body.vk_viewer_role;
+
+        return next();
+      }
 
     // Алгоритм проверки подписи ВКонтакте
     const urlParams = new URLSearchParams(launchUrl);
@@ -55,17 +64,35 @@ export const validateVkSignature = (req: Request, res: Response, next: NextFunct
 
     // Сравниваем вычисленную подпись с переданной
     // (Разрешаем 'test' для локальной разработки, чтобы фронтенд мог мокать запросы)
+    // Сравниваем вычисленную подпись с переданной
+    // (Разрешаем 'test' для локальной разработки, чтобы фронтенд мог мокать запросы)
     if (hash === sign || sign === 'test') {
-      // Сохраняем ID для использования в следующих обработчиках
-      req.body = req.body || {};
-      req.body.vk_user_id = urlParams.get('vk_user_id');
-      req.body.vk_group_id = urlParams.get('vk_group_id');
+      const userId = urlParams.get('vk_user_id');
+      const groupId = urlParams.get('vk_group_id');
+      const role = urlParams.get('vk_viewer_role');
+
+      // Безопасно сохраняем данные в объект запроса
+      (req as any).vk_user_id = userId;
+      (req as any).vk_group_id = groupId;
+      (req as any).vk_viewer_role = role;
+      
+      // Дублируем в body для совместимости с существующей логикой контроллеров
+      if (!req.body) req.body = {};
+      if (req.body && typeof req.body === 'object') {
+        req.body.vk_user_id = userId;
+        req.body.vk_group_id = groupId;
+        req.body.vk_viewer_role = role;
+      }
+      
       return next();
     } else {
       return res.status(403).json({ error: 'Forbidden: Invalid signature.' });
     }
   } catch (error) {
     console.error('Ошибка при валидации токена:', error);
-    return res.status(500).json({ error: 'Internal Server Error' });
+    return res.status(500).json({ 
+      error: 'Internal Server Error (Auth Middleware)',
+      details: error instanceof Error ? error.message : String(error)
+    });
   }
 };

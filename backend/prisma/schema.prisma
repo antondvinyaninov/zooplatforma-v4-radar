@@ -4,56 +4,233 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider     = "postgresql"
+  relationMode = "prisma"
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  vkId      String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  posts     Post[]
+  id                  Int                         @id @default(autoincrement())
+  name                String
+  lastName            String?                     @map("last_name")
+  email               String                      @unique
+  bio                 String?
+  phone               String?
+  location            String?
+  avatar              String?
+  coverPhoto          String?                     @map("cover_photo")
+  profileVisibility   String?                     @default("public") @map("profile_visibility")
+  showPhone           String?                     @default("friends") @map("show_phone")
+  showEmail           String?                     @default("friends") @map("show_email")
+  allowMessages       String?                     @default("everyone") @map("allow_messages")
+  showOnline          String?                     @default("yes") @map("show_online")
+  verified            Boolean?                    @default(false)
+  verifiedAt          DateTime?                   @map("verified_at")
+  createdAt           DateTime?                   @default(now()) @map("created_at")
+  lastSeen            DateTime?                   @map("last_seen")
+  passwordHash        String                      @map("password_hash")
+  vkId                Int?                        @unique @map("vk_id")
+  vkAccessToken       String?                     @map("vk_access_token")
+  okId                String?                     @unique @map("ok_id")
+  okAccessToken       String?                     @map("ok_access_token")
+  mailruId            String?                     @unique @map("mailru_id")
+  mailruAccessToken   String?                     @map("mailru_access_token")
+  vkAppSettings       VkAppUserSettings?
+  organizationMembers OrganizationMember[]
+  ownedOrganizations  Organization[]              @relation("OrganizationOwner")
+  communityDutyFor    Community[]                 @relation("CommunityDutyAdmin")
+  communityAdmins     CommunityNotificationAdmin[]
+  posts               Post[]                      @relation("PostAuthor")
+  radarPins           RadarPin[]
+
+  @@map("users")
 }
 
-model Post {
-  id          Int       @id @default(autoincrement())
-  content     String
-  tag         String?
-  media       Json      @default("[]")
-  status      String    @default("pending")
-  publishDate DateTime?
-  vkPostId    String?
-  chatLink    String?
-  cityId      Int?      
-  cityName    String?
-  regionName  String?
-  groupId     String?
-  community   Community? @relation(fields: [groupId], references: [id])
-  authorId    Int
-  author      User      @relation(fields: [authorId], references: [id])
-  createdAt   DateTime  @default(now())
+model VkAppUserSettings {
+  id                  Int      @id @default(autoincrement())
+  userId              Int      @unique @map("user_id")
+  roleLabel           String?  @map("role_label")
+  contactTelegram     String?  @map("contact_telegram")
+  contactEmail        String?  @map("contact_email")
+  homeCityName        String?  @map("home_city_name")
+  homeLat             Decimal? @map("home_lat") @db.Decimal(10, 8)
+  homeLng             Decimal? @map("home_lng") @db.Decimal(11, 8)
+  preferences         Json     @default("[]")
+  onboardingProgress  Int      @default(0) @map("onboarding_progress")
+  onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
+  karmaScore          Int      @default(0) @map("karma_score")
+  achievements        Json     @default("[]")
+  createdAt           DateTime? @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  user                User     @relation(fields: [userId], references: [id])
+
+  @@map("vk_app_user_settings")
+}
+
+model Organization {
+  id                Int                         @id @default(autoincrement())
+  name              String
+  type              String
+  description       String?
+  logo              String?
+  website           String?
+  phone             String?
+  email             String?
+  address           String?
+  city              String?
+  region            String?
+  createdAt         DateTime?                   @default(now()) @map("created_at")
+  updatedAt         DateTime?                   @updatedAt @map("updated_at")
+  shortName         String?                     @map("short_name")
+  bio               String?
+  coverPhoto        String?                     @map("cover_photo")
+  addressCity       String?                     @map("address_city")
+  addressRegion     String?                     @map("address_region")
+  isVerified        Boolean?                    @map("is_verified")
+  ownerUserId       Int?                        @map("owner_user_id")
+  status            String?                     @default("active")
+  isActive          Boolean?                    @default(true) @map("is_active")
+  profileVisibility String?                     @default("public") @map("profile_visibility")
+  showPhone         String?                     @default("everyone") @map("show_phone")
+  showEmail         String?                     @default("everyone") @map("show_email")
+  allowMessages     String?                     @default("everyone") @map("allow_messages")
+  geoLat            Decimal?                    @map("geo_lat") @db.Decimal(10, 8)
+  geoLng            Decimal?                    @map("geo_lon") @db.Decimal(11, 8)
+  networkRole       String                      @default("standalone") @map("network_role")
+  vkLink            String?                     @map("vk_link")
+  owner             User?                       @relation("OrganizationOwner", fields: [ownerUserId], references: [id])
+  members           OrganizationMember[]
+  community         Community?
+  communityAdmins   CommunityNotificationAdmin[]
+  postPublications  PostPublication[]
+  radarPins         RadarPin[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             Int          @id @default(autoincrement())
+  organizationId Int          @map("organization_id")
+  userId         Int          @map("user_id")
+  role           String?
+  position       String?
+  canPost        Boolean?     @map("can_post")
+  joinedAt       DateTime?    @map("joined_at")
+  orgAvatar      String?      @map("org_avatar")
+  permissions    Json?
+  isPublic       Boolean?     @map("is_public")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
 }
 
 model Community {
-  id               String   @id // VK group_id
-  accessToken      String
-  name             String?
-  avatarUrl        String?
-  acceptCrossPosts Boolean  @default(false)
-  cityId           Int?
-  cityName         String?
-  regionName       String?
-  dutyAdminId      String?
-  notifyAdminIds   String[]
-  acceptedTags     String[] @default(["Найден", "Потерян", "Ищет дом", "Сборы", "Инфо"])
-  scheduleIntervalMinutes Int @default(60)
-  scheduleStartTime   String   @default("09:00")
-  scheduleEndTime     String   @default("21:00")
-  createdAt        DateTime @default(now())
-  posts            Post[]
+  id                      Int                       @id @default(autoincrement())
+  organizationId          Int                       @unique @map("organization_id")
+  vkGroupId               BigInt                    @unique @map("vk_group_id")
+  accessToken             String                    @map("access_token")
+  acceptCrossPosts        Boolean                   @default(false) @map("accept_cross_posts")
+  acceptedTags            Json                      @default("[]") @map("accepted_tags")
+  scheduleIntervalMinutes Int                       @default(60) @map("schedule_interval_minutes")
+  scheduleStartTime       String                    @default("09:00") @map("schedule_start_time")
+  scheduleEndTime         String                    @default("21:00") @map("schedule_end_time")
+  dutyAdminUserId         Int?                      @map("duty_admin_user_id")
+  cityId                  Int?                      @map("city_id")
+  cityName                String?                   @map("city_name")
+  regionName              String?                   @map("region_name")
+  lat                     Decimal?                  @db.Decimal(10, 8)
+  lng                     Decimal?                  @db.Decimal(11, 8)
+  createdAt               DateTime?                 @default(now()) @map("created_at")
+  updatedAt               DateTime                  @updatedAt @map("updated_at")
+  organization            Organization              @relation(fields: [organizationId], references: [id])
+  dutyAdmin               User?                     @relation("CommunityDutyAdmin", fields: [dutyAdminUserId], references: [id])
+
+  @@map("organization_vk_settings")
+}
+
+model CommunityNotificationAdmin {
+  id             Int          @id @default(autoincrement())
+  organizationId Int          @map("organization_id")
+  userId         Int          @map("user_id")
+  createdAt      DateTime?    @default(now()) @map("created_at")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@unique([organizationId, userId])
+  @@map("organization_vk_notification_admins")
+}
+
+model Post {
+  id            Int              @id @default(autoincrement())
+  userId        Int?             @map("user_id")
+  content       String?          @default("")
+  mediaUrls     String?          @map("media_urls")
+  status        String?          @default("published")
+  scheduledAt   DateTime?        @map("scheduled_at")
+  createdAt     DateTime?        @default(now()) @map("created_at")
+  updatedAt     DateTime?        @updatedAt @map("updated_at")
+  authorId      Int              @map("author_id")
+  authorType    String           @default("user") @map("author_type")
+  attachedPets  String?          @map("attached_pets")
+  attachments   String?
+  tags          String?
+  isDeleted     Boolean?         @default(false) @map("is_deleted")
+  likesCount    Int?             @default(0) @map("likes_count")
+  commentsCount Int?             @default(0) @map("comments_count")
+  locationLat   Decimal?         @map("location_lat") @db.Decimal(10, 8)
+  locationLng   Decimal?         @map("location_lon") @db.Decimal(11, 8)
+  locationName  String?          @map("location_name") @db.VarChar(255)
+  replySetting  String?          @map("reply_setting") @db.VarChar(50)
+  verifyReplies Boolean?         @default(false) @map("verify_replies")
+  author        User             @relation("PostAuthor", fields: [authorId], references: [id])
+  publication   PostPublication?
+  radarPin      RadarPin?
+
+  @@map("posts")
+}
+
+model PostPublication {
+  id               Int          @id @default(autoincrement())
+  postId           Int          @unique @map("post_id")
+  organizationId   Int          @map("organization_id")
+  vkGroupId        BigInt       @map("vk_group_id")
+  moderationStatus String       @default("pending") @map("moderation_status")
+  publishDate      DateTime?    @map("publish_date")
+  vkPostId         BigInt?      @map("vk_post_id")
+  chatLink         String?      @map("chat_link")
+  cityId           Int?         @map("city_id")
+  cityName         String?      @map("city_name")
+  regionName       String?      @map("region_name")
+  createdAt        DateTime?    @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+  post             Post         @relation(fields: [postId], references: [id])
+  organization     Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("vk_post_publications")
+}
+
+model RadarPin {
+  id             Int          @id @default(autoincrement())
+  userId         Int?         @map("user_id")
+  postId         Int?         @unique @map("post_id")
+  organizationId Int?         @map("organization_id")
+  type           String
+  title          String
+  description    String?
+  lat            Decimal      @db.Decimal(10, 8)
+  lng            Decimal      @db.Decimal(11, 8)
+  expiresAt      DateTime     @map("expires_at")
+  createdAt      DateTime?    @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  user           User?        @relation(fields: [userId], references: [id])
+  post           Post?        @relation(fields: [postId], references: [id])
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  @@map("vk_radar_pins")
 }
