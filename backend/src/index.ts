@@ -23,6 +23,18 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // Подключаем наши маршруты для каждого мини-приложения
 app.use('/api/vk_post_app', vkPostAppRoutes);
 
+// Раздаем собранный фронтенд (если мы в продакшене / Docker)
+const frontendPath = path.join(__dirname, '../public_frontend');
+app.use(express.static(frontendPath));
+
+// Все остальные GET-запросы отдаем React-приложению (чтобы работал роутинг с хешами и путями)
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+    return res.status(404).json({ error: 'Route not found' });
+  }
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`🚀 Сервер успешно запущен на порту ${PORT}`);
   console.log(`📡 Ожидаем запросы на http://localhost:${PORT}/api/`);
