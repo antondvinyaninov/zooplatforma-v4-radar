@@ -138,6 +138,7 @@ export const Radar = ({ id, isModalRoot }: RadarProps) => {
       };
 
       map.once('load', () => {
+        map.resize();
         initMapFocus();
         fetchPins();
         
@@ -154,6 +155,19 @@ export const Radar = ({ id, isModalRoot }: RadarProps) => {
         }
       });
 
+      // Исправление бага с черным экраном/неправильным размером при первой загрузке (особенно в Epic)
+      const resizeObserver = new ResizeObserver(() => {
+        if (mapRef.current) {
+          mapRef.current.resize();
+        }
+      });
+      resizeObserver.observe(mapContainerRef.current);
+
+      // Страховочный ресайз через время анимации перехода
+      setTimeout(() => {
+        if (mapRef.current) mapRef.current.resize();
+      }, 300);
+
       map.on('click', (e: any) => {
         const { lng, lat } = e.lngLat;
         updateUserPosition(lat, lng, false);
@@ -163,6 +177,9 @@ export const Radar = ({ id, isModalRoot }: RadarProps) => {
         if (mapRef.current) {
           mapRef.current.remove();
           mapRef.current = null;
+        }
+        if (resizeObserver) {
+          resizeObserver.disconnect();
         }
         if (watchIdRef.current !== null) {
           navigator.geolocation.clearWatch(watchIdRef.current);
