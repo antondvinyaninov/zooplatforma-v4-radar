@@ -11,6 +11,24 @@ import { vkFetch } from './utils/api';
 
 const bridge = bridgePkg && 'default' in bridgePkg ? (bridgePkg as any).default : bridgePkg;
 
+interface VkLaunchParams {
+  vk_user_id?: string;
+  vk_app_id?: string;
+  vk_is_app_user?: string;
+  vk_are_notifications_enabled?: string;
+  vk_language?: string;
+  vk_ref?: string;
+  vk_access_token_settings?: string;
+  vk_group_id?: string;
+  vk_viewer_group_role?: string;
+  vk_platform?: string;
+  vk_is_favorite?: string;
+  vk_ts?: string;
+  vk_user_id_from?: string;
+  vk_user_id_to?: string;
+  vk_viewer_role?: string;
+}
+
 type VkBridgeUserProfile = {
   id?: number | string;
   first_name?: string;
@@ -23,7 +41,7 @@ type VkBridgeUserProfile = {
   bdate?: string;
 };
 
-const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number) => {
+const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T | null> => {
   return Promise.race<T | null>([
     promise,
     new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs))
@@ -72,7 +90,7 @@ const AppContent = () => {
   }, []);
 
   const onTabChange = (panel: string) => {
-    routeNavigator.push(panel === DEFAULT_VIEW_PANELS.RADAR ? '/' : `/${panel}`);
+    routeNavigator.replace(panel === DEFAULT_VIEW_PANELS.RADAR ? '/' : `/${panel}`);
   };
 
   return (

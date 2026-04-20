@@ -206,6 +206,7 @@ export const AppSettings = ({ id }: { id: string }) => {
             mode="primary"
             onClick={handleSave}
             loading={loading}
+            className="rounded-lg"
           >
             Сохранить настройки
           </Button>
@@ -213,6 +214,7 @@ export const AppSettings = ({ id }: { id: string }) => {
       </Group>
 
       <Spacing size={80} />
+      <style>{`.rounded-lg { border-radius: 8px !important; }`}</style>
     </Panel>
   );
 };
