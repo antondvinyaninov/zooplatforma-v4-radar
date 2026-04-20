@@ -388,7 +388,7 @@ export const Profile = ({ id }: { id: string }) => {
           size="s"
           mode="secondary"
           appearance="accent"
-          rounded
+          className="rounded-lg"
           onClick={() => (isEditingProfile ? handleCancelProfileEdit() : setIsEditingProfile(true))}
         >
           {isEditingProfile ? 'Отмена' : 'Редактировать'}
@@ -426,14 +426,14 @@ export const Profile = ({ id }: { id: string }) => {
             justifyContent: 'center',
             maxWidth: '100%',
             padding: '8px 14px',
-            borderRadius: 999,
+            borderRadius: 8,
             marginBottom: 16,
             background:
               viewerRole === 'admin' || viewerRole === 'editor'
-                ? 'linear-gradient(135deg, rgba(0, 119, 255, 0.14), rgba(88, 86, 214, 0.12))'
+                ? 'linear-gradient(135deg, var(--vkui--color_background_accent_alpha), var(--vkui--color_background_secondary_alpha))'
                 : 'var(--vkui--color_background_secondary_alpha)',
             border: '1px solid var(--vkui--color_separator_primary_alpha)',
-            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06)'
+            boxShadow: 'var(--vkui--elevation3)'
           }}
         >
           <Text
@@ -455,9 +455,9 @@ export const Profile = ({ id }: { id: string }) => {
             maxWidth: 360,
             marginBottom: 4,
             padding: '14px 12px',
-            borderRadius: 18,
+            borderRadius: 8,
             background: 'var(--vkui--color_background_modal)',
-            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+            boxShadow: 'var(--vkui--elevation2)',
             border: '1px solid var(--vkui--color_separator_primary_alpha)'
           }}
         >
@@ -830,6 +830,9 @@ export const Profile = ({ id }: { id: string }) => {
       */}
 
       <Spacing size={80} />
+      <style>{`
+        .rounded-lg { border-radius: 8px !important; }
+      `}</style>
     </Panel>
   );
 };

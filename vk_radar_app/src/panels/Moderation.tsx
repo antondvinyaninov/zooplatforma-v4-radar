@@ -117,7 +117,7 @@ export const Moderation = ({ id }: { id: string }) => {
       .join(' ') || (post.author?.vkId ? `ID ${post.author.vkId}` : 'Пользователь VK');
 
     return (
-      <Card key={post.id} mode="shadow" style={{ marginBottom: 16, padding: 16 }}>
+      <Card key={post.id} mode="shadow" style={{ marginBottom: 16, padding: 16, borderRadius: 8 }}>
         <SimpleCell
           before={<Avatar size={40} src={post.author?.photo200 || post.author?.avatarUrl} />}
           subtitle={new Date(post.createdAt).toLocaleString()}
@@ -137,7 +137,7 @@ export const Moderation = ({ id }: { id: string }) => {
                 key={idx} 
                 src={m.url} 
                 alt="media" 
-                style={{ height: 120, borderRadius: 12, objectFit: 'cover' }} 
+                style={{ height: 120, borderRadius: 8, objectFit: 'cover' }} 
               />
             ))}
           </div>
@@ -149,6 +149,7 @@ export const Moderation = ({ id }: { id: string }) => {
               size="l" 
               stretched 
               appearance="positive" 
+              className="rounded-lg"
               before={<Icon28CheckCircleOutline />}
               onClick={() => handleStatusUpdate(post.id, 'approved')}
             >
@@ -158,6 +159,7 @@ export const Moderation = ({ id }: { id: string }) => {
               size="l" 
               stretched 
               appearance="negative" 
+              className="rounded-lg"
               before={<Icon28CancelOutline />}
               onClick={() => handleStatusUpdate(post.id, 'rejected')}
             >
@@ -166,7 +168,7 @@ export const Moderation = ({ id }: { id: string }) => {
           </ButtonGroup>
         ) : (
           <Div style={{ marginTop: 16, padding: 0 }}>
-             <Group mode="plain" style={{ backgroundColor: 'var(--vkui--color_background_secondary)', borderRadius: 16, overflow: 'hidden' }}>
+             <Group mode="plain" style={{ backgroundColor: 'var(--vkui--color_background_secondary)', borderRadius: 8, overflow: 'hidden' }}>
                <RichCell
                  disabled
                  before={<Avatar size={36}><Icon24ViewOutline /></Avatar>}
@@ -255,6 +257,7 @@ export const Moderation = ({ id }: { id: string }) => {
       </Group>
 
       <Spacing size={40} />
+      <style>{`.rounded-lg { border-radius: 8px !important; }`}</style>
     </Panel>
   );
 };

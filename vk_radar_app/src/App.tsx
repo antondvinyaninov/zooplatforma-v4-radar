@@ -1,4 +1,4 @@
-import { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect } from 'react';
 import bridgePkg from '@vkontakte/vk-bridge';
 import { View, SplitLayout, SplitCol, Epic, Tabbar, TabbarItem, AppRoot } from '@vkontakte/vkui';
 import { useActiveVkuiLocation, useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
@@ -6,7 +6,6 @@ import { Icon28CompassOutline, Icon28ListOutline, Icon28UserCircleOutline, Icon2
 
 import { Radar, List, CreateAd, Profile, Moderation, AppSettings, MyAds } from './panels';
 import { DEFAULT_VIEW_PANELS } from './routes';
-import { ModalProvider, useModal } from './ModalContext';
 import { ModalRoot } from '@vkontakte/vkui';
 import { vkFetch } from './utils/api';
 
@@ -32,10 +31,10 @@ const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number) => {
 };
 
 const AppContent = () => {
-  const { panel: activePanel = DEFAULT_VIEW_PANELS.RADAR } = useActiveVkuiLocation();
+  const { panel: activePanel = DEFAULT_VIEW_PANELS.RADAR, modal: activeModal } = useActiveVkuiLocation();
   const routeNavigator = useRouteNavigator();
-  const { activeModal, setActiveModal, modalElements } = useModal();
-  const [popout, setPopout] = useState<ReactNode | null>(
+  
+  const [popout, setPopout] = useState<React.ReactElement | null>(
     <div style={{ color: '#fff', fontSize: 16, fontWeight: 500 }}>Загрузка...</div>
   );
 
@@ -76,63 +75,61 @@ const AppContent = () => {
     routeNavigator.push(panel === DEFAULT_VIEW_PANELS.RADAR ? '/' : `/${panel}`);
   };
 
-  const modal = (
-    <ModalRoot activeModal={activeModal} onClose={() => setActiveModal(null)}>
-      {Object.values(modalElements)}
-    </ModalRoot>
-  );
-
   return (
     <AppRoot>
-      <SplitLayout header={null}>
+      <SplitLayout 
+        header={null} 
+        popout={popout}
+        modal={
+          <ModalRoot activeModal={activeModal || null} onClose={() => routeNavigator.hideModal()}>
+            {/* Модалки будут рендериться внутри панелей или централизованно здесь */}
+            <Radar id={DEFAULT_VIEW_PANELS.RADAR} isModalRoot />
+            <List id={DEFAULT_VIEW_PANELS.LIST} />
+            <MyAds id={DEFAULT_VIEW_PANELS.MY_ADS} isModalRoot />
+            <CreateAd id={DEFAULT_VIEW_PANELS.CREATE_AD} />
+            <Profile id={DEFAULT_VIEW_PANELS.PROFILE} />
+            <Moderation id={DEFAULT_VIEW_PANELS.MODERATION} />
+            <AppSettings id={DEFAULT_VIEW_PANELS.SETTINGS} />
+          </ModalRoot>
+        }
+      >
         <SplitCol>
-          {popout && <div style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backgroundColor: 'rgba(0,0,0,0.1)' }}>{popout}</div>}
           <Epic
             activeStory={activePanel}
             tabbar={
               <Tabbar style={{ 
                 paddingBottom: 'env(safe-area-inset-bottom)',
-                height: 'calc(48px + env(safe-area-inset-bottom))' 
+                height: 'calc(48px + env(safe-area-inset-bottom))',
+                backgroundColor: 'var(--vkui--color_background_content)',
+                borderTop: '1px solid var(--vkui--color_separator_primary)'
               }}>
                 <TabbarItem
                   onClick={() => onTabChange(DEFAULT_VIEW_PANELS.RADAR)}
                   selected={activePanel === DEFAULT_VIEW_PANELS.RADAR}
-                  aria-label="Радар и карта событий"
+                  aria-label="Радар"
                 >
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <Icon28CompassOutline />
-                    <span style={{ fontSize: 11, fontWeight: 500 }}>Радар</span>
-                  </div>
+                  <Icon28CompassOutline />
                 </TabbarItem>
                 <TabbarItem
                   onClick={() => onTabChange(DEFAULT_VIEW_PANELS.LIST)}
                   selected={activePanel === DEFAULT_VIEW_PANELS.LIST}
-                  aria-label="Список и лента событий"
+                  aria-label="События"
                 >
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <Icon28ListOutline />
-                    <span style={{ fontSize: 11, fontWeight: 500 }}>События</span>
-                  </div>
+                  <Icon28ListOutline />
                 </TabbarItem>
                 <TabbarItem
                   onClick={() => onTabChange(DEFAULT_VIEW_PANELS.MY_ADS)}
                   selected={activePanel === DEFAULT_VIEW_PANELS.MY_ADS || activePanel === DEFAULT_VIEW_PANELS.CREATE_AD}
-                  aria-label="Мои объявления"
+                  aria-label="Объявления"
                 >
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <Icon28ArticleOutline />
-                    <span style={{ fontSize: 11, fontWeight: 500 }}>Объявления</span>
-                  </div>
+                  <Icon28ArticleOutline />
                 </TabbarItem>
                 <TabbarItem
                   onClick={() => onTabChange(DEFAULT_VIEW_PANELS.PROFILE)}
                   selected={activePanel === DEFAULT_VIEW_PANELS.PROFILE}
-                  aria-label="Мой профиль и настройки"
+                  aria-label="Профиль"
                 >
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                    <Icon28UserCircleOutline />
-                    <span style={{ fontSize: 11, fontWeight: 500 }}>Профиль</span>
-                  </div>
+                  <Icon28UserCircleOutline />
                 </TabbarItem>
               </Tabbar>
             }
@@ -148,7 +145,6 @@ const AppContent = () => {
             </View>
           </Epic>
         </SplitCol>
-        {Object.keys(modalElements).length > 0 && modal}
       </SplitLayout>
     </AppRoot>
   );
@@ -156,8 +152,6 @@ const AppContent = () => {
 
 export const App = () => {
   return (
-    <ModalProvider>
-      <AppContent />
-    </ModalProvider>
+    <AppContent />
   );
 };

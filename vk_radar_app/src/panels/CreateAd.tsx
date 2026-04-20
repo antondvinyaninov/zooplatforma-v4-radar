@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Panel, PanelHeader, PanelHeaderBack, Group, FormLayoutGroup, FormItem, Input, Textarea, CustomSelect, Button, Placeholder, Spacing, Div, Title, Text } from '@vkontakte/vkui';
 import { Icon56NewsfeedOutline, Icon28CheckCircleOutline } from '@vkontakte/icons';
+import { useRouteNavigator } from '@vkontakte/vk-mini-apps-router';
 import { vkFetch } from '../utils/api';
 
 export const CreateAd = ({ id }: { id: string }) => {
+  const routeNavigator = useRouteNavigator();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   
@@ -36,15 +38,12 @@ export const CreateAd = ({ id }: { id: string }) => {
   if (success) {
     return (
       <Panel id={id}>
-        <PanelHeader delimiter="none" before={<PanelHeaderBack onClick={() => window.history.back()} />}>Пристрой</PanelHeader>
+        <PanelHeader delimiter="none" before={<PanelHeaderBack onClick={() => routeNavigator.back()} />}>Объявление</PanelHeader>
         <Placeholder
           icon={<Icon28CheckCircleOutline width={56} height={56} style={{ color: 'var(--vkui--color_icon_positive)' }} />}
-          action={<Button size="m" onClick={() => setSuccess(false)}>Подать еще одно</Button>}
+          action={<Button size="l" className="rounded-lg" onClick={() => setSuccess(false)}>Подать еще одно</Button>}
         >
-          <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Отправлено!</div>
-          <Text weight="2" style={{ color: 'var(--vkui--color_text_secondary)', textAlign: 'center' }}>
-            Ваше объявление отправлено на модерацию в группу. Оно появится на стене сообщества после проверки.
-          </Text>
+          Отправлено на проверку!
         </Placeholder>
       </Panel>
     );
@@ -52,7 +51,7 @@ export const CreateAd = ({ id }: { id: string }) => {
 
   return (
     <Panel id={id}>
-      <PanelHeader delimiter="none" before={<PanelHeaderBack onClick={() => window.history.back()} />}>Пристрой</PanelHeader>
+      <PanelHeader delimiter="none" before={<PanelHeaderBack onClick={() => routeNavigator.back()} />}>Объявление</PanelHeader>
       
       <Group>
         <Div>
@@ -60,44 +59,39 @@ export const CreateAd = ({ id }: { id: string }) => {
             <Icon56NewsfeedOutline style={{ color: 'var(--vkui--color_icon_accent)', marginBottom: 16 }} />
             <Title level="2" weight="1" style={{ marginBottom: 8 }}>Новое объявление</Title>
             <Text style={{ color: 'var(--vkui--color_text_secondary)', padding: '0 20px' }}>
-              Заполните анкету, и мы опубликуем её на стене нашего сообщества.
+              Ваша запись появится в ленте сообщества после модерации.
             </Text>
           </div>
         </Div>
 
         <FormLayoutGroup mode="vertical">
-          <FormItem top="Имя / Заголовок" htmlFor="ad-title">
+          <FormItem top="Заголовок">
             <Input 
-              id="ad-title"
               value={title} 
               onChange={e => setTitle(e.target.value)} 
-              placeholder="Например: Барсик ищет дом" 
+              placeholder="Например: Поиск дома для Дружка" 
             />
           </FormItem>
 
-          <FormItem top="Категория" htmlFor="ad-tag">
+          <FormItem top="Категория">
             <CustomSelect 
-              id="ad-tag"
               value={tag} 
               onChange={e => setTag(e.target.value)} 
               options={[
                 {label: 'Собака', value: 'собака'},
                 {label: 'Кошка', value: 'кошка'},
-                {label: 'Экзотика', value: 'экзотика'},
-                {label: 'Срочно', value: 'срочно'},
-                {label: 'Корм/Лекарства', value: 'помощь'},
+                {label: 'Помощь', value: 'помощь'},
                 {label: 'Другое', value: 'другое'}
               ]} 
-              placeholder="Выберите категорию..."
+              placeholder="Выберите категорию"
             />
           </FormItem>
 
-          <FormItem top="Описание животного и контакты" htmlFor="ad-desc">
+          <FormItem top="Описание">
             <Textarea 
-              id="ad-desc"
               value={description} 
               onChange={e => setDescription(e.target.value)} 
-              placeholder="Опишите характер, возраст и как с вами связаться..." 
+              placeholder="Опишите подробности и укажите контакты" 
               rows={6}
             />
           </FormItem>
@@ -108,14 +102,16 @@ export const CreateAd = ({ id }: { id: string }) => {
               size="l" 
               loading={loading} 
               onClick={handleSubmit}
+              className="rounded-lg"
             >
-              Опубликовать в группу
+              Отправить в группу
             </Button>
           </FormItem>
         </FormLayoutGroup>
       </Group>
 
       <Spacing size={80} />
+      <style>{`.rounded-lg { border-radius: 8px !important; }`}</style>
     </Panel>
   );
 };

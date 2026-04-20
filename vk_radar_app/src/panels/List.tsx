@@ -52,9 +52,8 @@ export const List = ({ id }: { id: string }) => {
   }, []);
 
   const goToMap = (item: FeedItem) => {
-    if (item.lat && item.lng) {
-      localStorage.setItem('radar_target_pin', JSON.stringify({ lat: item.lat, lng: item.lng }));
-      routeNavigator.push('/');
+    if (item.type === 'pin') {
+      routeNavigator.push(`/radar/${item.id}`);
     }
   };
 
@@ -67,42 +66,39 @@ export const List = ({ id }: { id: string }) => {
 
   return (
     <Panel id={id}>
-      <PanelHeader delimiter="none">Список</PanelHeader>
+      <PanelHeader delimiter="none">События</PanelHeader>
       
-      <Tabs mode="default">
+      <Tabs mode="default" style={{ marginBottom: 8 }}>
         <TabsItem selected={activeTab === 'all'} onClick={() => setActiveTab('all')}>Все</TabsItem>
         <TabsItem selected={activeTab === 'radar'} onClick={() => setActiveTab('radar')}>Радар</TabsItem>
         <TabsItem selected={activeTab === 'rehome'} onClick={() => setActiveTab('rehome')}>Пристрой</TabsItem>
       </Tabs>
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
-          <div style={{ color: 'var(--vkui--color_text_secondary)' }}>Загрузка событий...</div>
-        </div>
+        <Div style={{ textAlign: 'center', padding: 40, color: 'var(--vkui--color_text_secondary)' }}>Загрузка...</Div>
       ) : filteredItems.length === 0 ? (
         <Placeholder
           icon={<Icon56NewsfeedOutline style={{ color: 'var(--vkui--color_icon_accent)' }} />}
         >
-          <div style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Здесь пока тишина</div>
-          <Text weight="2" style={{ color: 'var(--vkui--color_text_secondary)', textAlign: 'center' }}>
-            В вашем районе пока нет активных событий или объявлений.
-          </Text>
+          Здесь пока тишина
         </Placeholder>
       ) : (
-        <Group style={{ padding: '0 12px' }}>
+        <Group style={{ padding: '0 8px' }}>
           {filteredItems.map(item => (
-            <Card key={`${item.type}-${item.id}`} mode="shadow" style={{ marginBottom: 12 }}>
+            <Card key={`${item.type}-${item.id}`} mode="shadow" style={{ marginBottom: 12, borderRadius: 8 }}>
               <RichCell
                 disabled
                 before={
-                  <Avatar size={48} style={{ background: item.type === 'pin' ? 'var(--vkui--color_background_negative_tint)' : 'var(--vkui--color_background_positive_tint)' }}>
+                  <Avatar size={48} style={{ 
+                    background: item.type === 'pin' ? 'var(--vkui--color_background_negative_tint)' : 'var(--vkui--color_background_positive_tint)' 
+                  }}>
                     {item.type === 'pin' ? <Icon28WarningTriangleOutline style={{ color: 'var(--vkui--color_icon_negative)' }} /> : <Icon28HomeOutline style={{ color: 'var(--vkui--color_icon_positive)' }} />}
                   </Avatar>
                 }
                 subtitle={new Date(item.createdAt).toLocaleDateString()}
                 after={
                   <Badge mode={item.subType === 'sos' ? 'prominent' : 'new'}>
-                    {item.type === 'pin' ? item.subType.toUpperCase() : 'ПРИСТРОЙ'}
+                    {item.subType.toUpperCase()}
                   </Badge>
                 }
               >
@@ -117,6 +113,7 @@ export const List = ({ id }: { id: string }) => {
                     <Button 
                       stretched 
                       size="m" 
+                      className="rounded-lg"
                       before={<Icon28CompassOutline width={20} height={20} />}
                       onClick={() => goToMap(item)}
                     >
@@ -127,6 +124,7 @@ export const List = ({ id }: { id: string }) => {
                       stretched 
                       mode="secondary"
                       size="m" 
+                      className="rounded-lg"
                       before={<Icon28ArchiveOutline width={20} height={20} />}
                     >
                       Подробнее
@@ -135,6 +133,7 @@ export const List = ({ id }: { id: string }) => {
                   <Button 
                     mode="tertiary" 
                     size="m" 
+                    className="rounded-lg"
                   >
                     <Icon28MessageOutline width={24} height={24} />
                   </Button>
@@ -145,6 +144,7 @@ export const List = ({ id }: { id: string }) => {
           <Spacing size={80} />
         </Group>
       )}
+      <style>{`.rounded-lg { border-radius: 8px !important; }`}</style>
     </Panel>
   );
 };
