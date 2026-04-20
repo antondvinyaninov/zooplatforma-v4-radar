@@ -194,8 +194,11 @@ export const Profile = ({ id }: { id: string }) => {
           );
           if (bridgeData) {
             console.log('[Auth] 🌉 Params from Bridge:', bridgeData);
-            if (bridgeData.vk_viewer_role && bridgeData.vk_viewer_role !== 'none') {
-              role = bridgeData.vk_viewer_role;
+            // Проверяем оба возможных поля роли
+            const bRole = bridgeData.vk_viewer_group_role || bridgeData.vk_viewer_role;
+            
+            if (bRole && bRole !== 'none') {
+              role = bRole;
               console.log('[Auth] ✅ Role updated from Bridge:', role);
             }
             if (bridgeData.vk_group_id) {
@@ -221,8 +224,17 @@ export const Profile = ({ id }: { id: string }) => {
         ]);
 
         if (profile && (profile as any).viewerRole) {
-          console.log('[Auth] 👑 Role verified by Server (SSR-V):', (profile as any).viewerRole);
-          setViewerRole((profile as any).viewerRole);
+          const serverRole = (profile as any).viewerRole;
+          console.log('[Auth] 👑 Role verified by Server (SSR-V):', serverRole);
+          
+          // Приоритизация: если сервер говорит admin, это истина.
+          // Если сервер говорит none, но Bridge уже сказал admin - верим Bridge.
+          if (serverRole !== 'none' || role === 'none') {
+            role = serverRole;
+            setViewerRole(serverRole);
+          } else {
+            console.log('[Auth] ⚠️ Server returned none, but keeping Bridge admin status.');
+          }
         } else if (profile) {
           console.log('[Auth] ℹ️ Server returned profile but no explicit viewerRole field');
         }
