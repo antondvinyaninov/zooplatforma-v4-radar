@@ -29,8 +29,10 @@ app.use(express.static(frontendPath));
 
 // Все остальные запросы отдаем React-приложению (чтобы работал роутинг)
 app.use((req, res) => {
-  if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
-    return res.status(404).json({ error: 'Route not found' });
+  // Не отдаем index.html для потерянных статических файлов (ассетов), 
+  // чтобы браузер не пытался парсить HTML как JS и не выдавал Script Error.
+  if (req.path.startsWith('/api') || req.path.startsWith('/uploads') || req.path.includes('.')) {
+    return res.status(404).json({ error: 'Not found' });
   }
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
