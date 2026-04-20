@@ -214,6 +214,11 @@ export const Profile = ({ id }: { id: string }) => {
           vkFetch('/posts/my').catch(() => [])
         ]);
 
+        if (profile && (profile as any).viewerRole) {
+          console.log('Role from Server:', (profile as any).viewerRole);
+          setViewerRole((profile as any).viewerRole);
+        }
+
         const mergedProfile = mergeProfiles(profile as StoredUserProfile | null, null);
         setUserData(mergedProfile);
         setProfileForm(createProfileForm(mergedProfile));

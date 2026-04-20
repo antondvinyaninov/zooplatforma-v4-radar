@@ -310,7 +310,8 @@ const serializeUserProfile = (
   onboardingProgress: settings?.onboardingProgress || 0,
   onboardingCompleted: settings?.onboardingCompleted || false,
   karmaScore: settings?.karmaScore || 0,
-  achievements: jsonValueToStringArray(settings?.achievements)
+  achievements: jsonValueToStringArray(settings?.achievements),
+  viewerRole: (user as any).viewerRole || null
 });
 
 const serializeCommunity = (
@@ -768,6 +769,9 @@ router.get('/profile/me', async (req, res) => {
     if (!vkId) return res.status(401).json({ error: 'No user ID' });
 
     const response = await resolveProfileResponse(vkId);
+    if (response) {
+      (response as any).viewerRole = (req as any).vk_viewer_role || null;
+    }
     return res.json(response);
   } catch (error) {
     console.error('Failed to fetch current user profile:', error);
