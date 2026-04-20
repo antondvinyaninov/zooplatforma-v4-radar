@@ -140,6 +140,18 @@ export const Radar = ({ id, isModalRoot }: RadarProps) => {
       map.once('load', () => {
         initMapFocus();
         fetchPins();
+        
+        // Запускаем точное отслеживание
+        if ("geolocation" in navigator) {
+          watchIdRef.current = navigator.geolocation.watchPosition(
+            (pos) => {
+              const { latitude, longitude } = pos.coords;
+              updateUserPosition(latitude, longitude, false);
+            },
+            (err) => console.warn('[Geolocation] Watch failed:', err),
+            { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+          );
+        }
       });
 
       map.on('click', (e: any) => {
@@ -154,10 +166,11 @@ export const Radar = ({ id, isModalRoot }: RadarProps) => {
         }
         if (watchIdRef.current !== null) {
           navigator.geolocation.clearWatch(watchIdRef.current);
+          watchIdRef.current = null;
         }
       };
     }
-  }, [id, isModalRoot]);
+  }, [id, isModalRoot, appearance]);
 
   // Модальные окна
   if (isModalRoot) {
@@ -342,20 +355,31 @@ export const Radar = ({ id, isModalRoot }: RadarProps) => {
 
   return (
     <Panel id={id} style={{ backgroundColor: 'var(--vkui--color_background_content)' }}>
-      <div style={{ position: 'relative', height: '100vh', overflow: 'hidden' }}>
+      <div style={{ 
+        position: 'relative', 
+        height: '100%', 
+        minHeight: 'calc(100vh - 48px - env(safe-area-inset-bottom))',
+        width: '100%',
+        overflow: 'hidden' 
+      }}>
         
         {/* Кнопка SOS */}
-        <div style={{ position: 'absolute', bottom: 110, right: 20, zIndex: 10 }}>
+        <div style={{ 
+          position: 'absolute', 
+          bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', 
+          right: 20, 
+          zIndex: 10 
+        }}>
           <div 
             onClick={() => {
               setAddFormData({ title: '', description: '', type: 'sos' });
               routeNavigator.showModal(DEFAULT_MODALS.ADD_PIN);
             }}
             style={{ 
-              backgroundColor: '#ef4444', borderRadius: '50%', width: 65, height: 65, 
+              backgroundColor: '#ef4444', borderRadius: '50%', width: 72, height: 72, 
               display: 'flex', alignItems: 'center', justifyContent: 'center', 
-              border: '3px solid #fff', fontSize: 18, fontWeight: 900, color: '#fff', 
-              cursor: 'pointer', boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)',
+              border: '4px solid #fff', fontSize: 20, fontWeight: 900, color: '#fff', 
+              cursor: 'pointer', boxShadow: '0 8px 32px rgba(239, 68, 68, 0.5)',
               animation: 'pulse-red 2s infinite'
             }}
           >
@@ -364,15 +388,21 @@ export const Radar = ({ id, isModalRoot }: RadarProps) => {
         </div>
 
         {/* Кнопка Моя позиция */}
-        <div style={{ position: 'absolute', bottom: 30, right: 20, zIndex: 10 }}>
+        <div style={{ 
+          position: 'absolute', 
+          bottom: 'calc(110px + env(safe-area-inset-bottom, 0px))', 
+          right: 20, 
+          zIndex: 10 
+        }}>
           <div 
             onClick={() => locateMe(true)}
             style={{ 
-              backgroundColor: 'var(--vkui--color_background_content)', 
-              borderRadius: '50%', width: 50, height: 50, 
+              backgroundColor: 'var(--vkui--color_background_modal)', 
+              borderRadius: 12, width: 44, height: 44, 
               display: 'flex', alignItems: 'center', justifyContent: 'center', 
-              cursor: 'pointer', border: '1px solid var(--vkui--color_separator_primary)',
-              boxShadow: 'shadow-sm'
+              cursor: 'pointer', border: '1px solid var(--vkui--color_separator_primary_alpha)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              backdropFilter: 'blur(10px)'
             } as any}
           >
             <Icon28CompassOutline style={{ color: 'var(--vkui--color_icon_accent)' }} />
