@@ -38,6 +38,7 @@ export const AppSettings = ({ id }: { id: string }) => {
   });
   const [managers, setManagers] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
+  const [isSearchingCities, setIsSearchingCities] = useState(false);
 
   const fetchConfig = async () => {
     try {
@@ -62,12 +63,18 @@ export const AppSettings = ({ id }: { id: string }) => {
   }, []);
 
   const searchCities = async (q: string) => {
-    if (q.length < 2) return;
+    if (!q || q.length < 2) {
+      setCities([]);
+      return;
+    }
+    setIsSearchingCities(true);
     try {
       const data = await vkFetch(`/utils/cities?q=${q}`);
       setCities(data.items || []);
     } catch (e) {
       console.error('City search failed', e);
+    } finally {
+      setIsSearchingCities(false);
     }
   };
 
@@ -112,8 +119,10 @@ export const AppSettings = ({ id }: { id: string }) => {
               id="city"
               placeholder="Начните вводить название города"
               searchable
-              onInputChange={(e) => searchCities(e.target.value)}
+              onInputChange={(val) => searchCities(val)}
               options={cities.map(c => ({ label: c.title, value: c.id }))}
+              filterFn={false}
+              fetching={isSearchingCities}
               value={config.cityId}
               onChange={(e) => {
                 const cityId = Number(e.target.value);

@@ -1269,9 +1269,11 @@ router.post('/community/token', async (req, res) => {
 });
 
 router.patch('/community/:id', async (req, res) => {
-  const viewerRole = req.body.vk_viewer_role;
-  if (viewerRole !== 'admin' && viewerRole !== 'editor' && viewerRole !== 'none') {
-    return res.status(403).json({ error: 'Only administrators can change community settings' });
+  const viewerRole = req.body.vk_viewer_role || (req as any).vk_viewer_role;
+  
+  if (viewerRole !== 'admin' && viewerRole !== 'editor') {
+    console.warn(`[Security] Unauthorized access attempt to PATCH /community/${req.params.id} by user with role: ${viewerRole}`);
+    return res.status(403).json({ error: 'Only administrators or editors can change community settings' });
   }
 
   try {
@@ -1354,6 +1356,9 @@ router.get('/utils/cities', async (req, res) => {
 
   try {
     const vkResult = await searchVkCities(q, process.env.VK_SERVICE_KEY);
+    if (!vkResult || !vkResult.items || vkResult.items.length === 0) {
+      console.log(`[Cities] No results found for query: "${q}"`);
+    }
     return res.json(vkResult);
   } catch (error) {
     console.error('Failed to fetch cities:', error);
