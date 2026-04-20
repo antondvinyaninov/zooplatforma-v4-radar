@@ -1,7 +1,8 @@
 import crypto from 'crypto';
 import { Request, Response, NextFunction } from 'express';
+import { verifyUserRole } from '../utils/roleCache';
 
-export const validateVkSignature = (req: Request, res: Response, next: NextFunction) => {
+export const validateVkSignature = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -20,18 +21,24 @@ export const validateVkSignature = (req: Request, res: Response, next: NextFunct
         // Извлечем vk_user_id из строки просто для удобства
         const params = new URLSearchParams(launchUrl);
         const roleFromParams = params.get('vk_viewer_role');
+        const userId = params.get('vk_user_id');
+        const groupId = params.get('vk_group_id');
         
         if (!req.body) req.body = {};
-        req.body.vk_user_id = params.get('vk_user_id');
-        req.body.vk_group_id = params.get('vk_group_id');
+        req.body.vk_user_id = userId;
+        req.body.vk_group_id = groupId;
         
         // В деве принудительно ставим admin, если роль не указана или none
-        req.body.vk_viewer_role = (roleFromParams && roleFromParams !== 'none') ? roleFromParams : 'admin';
+        const verifiedRole = (roleFromParams && roleFromParams !== 'none') 
+          ? roleFromParams 
+          : await verifyUserRole(userId, groupId).then(r => r === 'none' ? 'admin' : r);
+
+        req.body.vk_viewer_role = verifiedRole;
         
         // Дублируем в req properties для безопасности
-        (req as any).vk_user_id = req.body.vk_user_id;
-        (req as any).vk_group_id = req.body.vk_group_id;
-        (req as any).vk_viewer_role = req.body.vk_viewer_role;
+        (req as any).vk_user_id = userId;
+        (req as any).vk_group_id = groupId;
+        (req as any).vk_viewer_role = verifiedRole;
 
         return next();
       }
@@ -72,11 +79,9 @@ export const validateVkSignature = (req: Request, res: Response, next: NextFunct
       const groupId = urlParams.get('vk_group_id');
       let role = urlParams.get('vk_viewer_role');
 
-      // Список ID пользователей, которые всегда должны быть админами (для отладки)
-      const SUPER_ADMINS = ['81306887', '21644160'];
-      if (userId && SUPER_ADMINS.includes(userId)) {
-        console.log(`👤 SuperAdmin detected: ${userId}. Forcing admin role.`);
-        role = 'admin';
+      // Если роль не определена через подпись (none), проверяем её через VK API (SSR-V)
+      if (!role || role === 'none') {
+        role = await verifyUserRole(userId, groupId);
       }
 
       // Безопасно сохраняем данные в объект запроса

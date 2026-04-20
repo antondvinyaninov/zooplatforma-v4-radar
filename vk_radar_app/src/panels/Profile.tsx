@@ -183,40 +183,48 @@ export const Profile = ({ id }: { id: string }) => {
         let role = params.get('vk_viewer_role') || 'none';
         let gId = params.get('vk_group_id');
         
-        console.log('Launch Params from URL:', { role, gId });
+        console.log('[Auth] 📍 Role from URL:', role);
+        console.log('[Auth] 🆔 Group from URL:', gId);
 
         // 2. Пробуем получить через VK Bridge
         try {
-          const launchData = await withTimeout(
+          const bridgeData = await withTimeout(
             bridge.send('VKWebAppGetLaunchParams') as Promise<any>,
             2000
           );
-          console.log('Launch Params from Bridge:', launchData);
-          if (launchData) {
-            if (launchData.vk_viewer_role && launchData.vk_viewer_role !== 'none') {
-              role = launchData.vk_viewer_role;
+          if (bridgeData) {
+            console.log('[Auth] 🌉 Params from Bridge:', bridgeData);
+            if (bridgeData.vk_viewer_role && bridgeData.vk_viewer_role !== 'none') {
+              role = bridgeData.vk_viewer_role;
+              console.log('[Auth] ✅ Role updated from Bridge:', role);
             }
-            if (launchData.vk_group_id) {
-              gId = String(launchData.vk_group_id);
+            if (bridgeData.vk_group_id) {
+              gId = String(bridgeData.vk_group_id);
             }
           }
-        } catch (launchErr) {
-          console.warn('VKWebAppGetLaunchParams failed', launchErr);
+        } catch (bridgeErr) {
+          console.warn('[Auth] 🌉 Bridge fetch failed:', bridgeErr);
         }
 
         setGroupId(gId);
         setViewerRole(role);
 
-        // ... rest of the fetch logic ...
+        // 3. Загружаем профиль с сервера (там сработает SSR-V)
+        console.log('[Auth] 📡 Fetching profile from server...');
         const [profile, pins, posts] = await Promise.all([
-          vkFetch('/profile/me').catch(() => null),
+          vkFetch('/profile/me').catch((e) => {
+             console.error('[Auth] ❌ Server profile fetch failed:', e);
+             return null;
+          }),
           vkFetch('/radar/pins/my').catch(() => []),
           vkFetch('/posts/my').catch(() => [])
         ]);
 
         if (profile && (profile as any).viewerRole) {
-          console.log('Role from Server:', (profile as any).viewerRole);
+          console.log('[Auth] 👑 Role verified by Server (SSR-V):', (profile as any).viewerRole);
           setViewerRole((profile as any).viewerRole);
+        } else if (profile) {
+          console.log('[Auth] ℹ️ Server returned profile but no explicit viewerRole field');
         }
 
         const mergedProfile = mergeProfiles(profile as StoredUserProfile | null, null);
@@ -227,21 +235,23 @@ export const Profile = ({ id }: { id: string }) => {
         if (Array.isArray(posts)) setMyPosts(posts);
 
         try {
+          console.log('[Auth] 👤 Requesting detailed user info from Bridge...');
           const bridgeUser = await withTimeout(
             bridge.send('VKWebAppGetUserInfo') as Promise<VkBridgeUserProfile>,
             2000
           );
 
           if (bridgeUser) {
+            console.log('[Auth] ✅ Bridge user info received');
             const bridgeMergedProfile = mergeProfiles(profile as StoredUserProfile | null, bridgeUser);
             setUserData(bridgeMergedProfile);
             setProfileForm(createProfileForm(bridgeMergedProfile));
           }
         } catch (bridgeError) {
-          console.warn('Failed to fetch VK bridge user info', bridgeError);
+          console.warn('[Auth] 👤 Bridge user info failed', bridgeError);
         }
       } catch (e) {
-        console.error('Profile init error:', e);
+        console.error('[Auth] 🚨 Critical Profile Init Error:', e);
       }
     }
 
