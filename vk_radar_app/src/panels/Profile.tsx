@@ -11,9 +11,8 @@ import {
   // CardGrid,
   // Card,
   Header,
-  // Tappable,
   Gradient,
-  MiniInfoCell,
+  Placeholder,
   Headline,
   Caption,
   Button,
@@ -428,24 +427,21 @@ export const Profile = ({ id }: { id: string }) => {
             padding: '8px 14px',
             borderRadius: 8,
             marginBottom: 16,
-            background:
-              viewerRole === 'admin' || viewerRole === 'editor'
-                ? 'linear-gradient(135deg, var(--vkui--color_background_accent_alpha), var(--vkui--color_background_secondary_alpha))'
-                : 'var(--vkui--color_background_secondary_alpha)',
+            background: 'var(--vkui--color_background_secondary_alpha)',
             border: '1px solid var(--vkui--color_separator_primary_alpha)',
-            boxShadow: 'var(--vkui--elevation3)'
+            boxShadow: 'var(--vkui--elevation1)'
           }}
         >
           <Text
             weight="2"
             style={{
               color: 'var(--vkui--color_text_accent)',
-              fontSize: 14,
-              lineHeight: '18px',
+              fontSize: 13,
+              lineHeight: '16px',
               textAlign: 'center'
             }}
           >
-            Роль входа: {viewerRoleLabel}
+            {viewerRoleLabel}
           </Text>
         </div>
 
@@ -454,10 +450,10 @@ export const Profile = ({ id }: { id: string }) => {
             width: '100%',
             maxWidth: 360,
             marginBottom: 4,
-            padding: '14px 12px',
-            borderRadius: 8,
+            padding: '16px 12px',
+            borderRadius: 16,
             background: 'var(--vkui--color_background_modal)',
-            boxShadow: 'var(--vkui--elevation2)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
             border: '1px solid var(--vkui--color_separator_primary_alpha)'
           }}
         >
@@ -566,16 +562,17 @@ export const Profile = ({ id }: { id: string }) => {
               >
                 <div
                   style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: '50%',
+                    width: 52,
+                    height: 52,
+                    borderRadius: 12,
                     backgroundColor: badge.bgColor,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     color: badge.color,
                     marginBottom: 6,
-                    boxShadow: hasBadge ? `0 2px 8px ${badge.bgColor}` : 'none'
+                    boxShadow: hasBadge ? `0 4px 12px ${badge.bgColor}` : 'none',
+                    border: hasBadge ? `1px solid ${badge.color}40` : 'none'
                   }}
                 >
                   {badge.icon}
@@ -590,12 +587,13 @@ export const Profile = ({ id }: { id: string }) => {
       </Gradient>
 
       {isAdmin && groupId && (
-        <Group mode="card" header={<Header>Управление сообществом</Header>}>
+        <Group mode="card" className="rounded-lg" header={<Header>Управление сообществом</Header>}>
           <SimpleCell
             before={<Icon28CheckCircleOutline style={{ color: 'var(--vkui--color_icon_accent)' }} />}
             subtitle="Проверить и согласовать предложенные посты"
             after={<Icon24ChevronRight />}
             onClick={() => routeNavigator.push('/moderation')}
+            className="rounded-lg"
           >
             Модерация
           </SimpleCell>
@@ -604,6 +602,7 @@ export const Profile = ({ id }: { id: string }) => {
             subtitle="Настроить город, расписание и админов"
             after={<Icon24ChevronRight />}
             onClick={() => routeNavigator.push('/settings')}
+            className="rounded-lg"
           >
             Настройки приложения
           </SimpleCell>
@@ -611,17 +610,19 @@ export const Profile = ({ id }: { id: string }) => {
             before={<Icon28CompassOutline style={{ color: 'var(--vkui--color_icon_accent)' }} />}
             subtitle="Закрепить текущие координаты как домашние"
             after={<Icon24ChevronRight />}
+            className="rounded-lg"
           >
             Закрепить локацию Радара
           </SimpleCell>
         </Group>
       )}
 
-      <Group mode="card" header={<Header>Моя активность</Header>}>
+      <Group mode="card" className="rounded-lg" header={<Header>Моя активность</Header>}>
         <SimpleCell
           before={<Icon28CompassOutline style={{ color: 'var(--vkui--color_icon_accent)' }} />}
           subtitle={`${myPins.length} событий`}
           after={<Icon24ChevronRight />}
+          className="rounded-lg"
         >
           Мои метки на карте
         </SimpleCell>
@@ -629,12 +630,13 @@ export const Profile = ({ id }: { id: string }) => {
           before={<Icon28ArticleOutline style={{ color: 'var(--vkui--color_icon_accent)' }} />}
           subtitle={`${myPosts.length} объявлений`}
           after={<Icon24ChevronRight />}
+          className="rounded-lg"
         >
           Мои объявления
         </SimpleCell>
       </Group>
 
-      <Group mode="card">
+      <Group mode="card" className="rounded-lg">
         {isEditingProfile ? (
           <FormLayoutGroup mode="vertical">
             <FormItem top="Роль в сервисе">
@@ -717,64 +719,73 @@ export const Profile = ({ id }: { id: string }) => {
             </FormItem>
 
             <FormItem>
-              <Button stretched size="l" loading={isSavingProfile} onClick={handleSaveProfile}>
+              <Button stretched size="l" appearance="accent" loading={isSavingProfile} onClick={handleSaveProfile} className="rounded-lg">
                 Сохранить профиль
               </Button>
             </FormItem>
           </FormLayoutGroup>
         ) : (
-          <>
+          <div style={{ padding: '8px 4px' }}>
             {userData?.screenName && (
-              <MiniInfoCell textWrap="nowrap">@{userData.screenName}</MiniInfoCell>
+              <SimpleCell disabled before={<Icon28ShieldKeyholeOutline style={{ color: 'var(--vkui--color_icon_accent)' }} />} subtitle="ID / ScreenName">
+                @{userData.screenName}
+              </SimpleCell>
             )}
 
             {userData?.roleLabel && (
-              <MiniInfoCell textWrap="nowrap">{userData.roleLabel}</MiniInfoCell>
+              <SimpleCell disabled before={<Icon28ArticleOutline style={{ color: 'var(--vkui--color_icon_accent)' }} />} subtitle="Статус в сообществе">
+                {userData.roleLabel}
+              </SimpleCell>
             )}
 
             {userData?.bio && (
-              <div style={{ padding: '0 16px 16px' }}>
-                <Text style={{ whiteSpace: 'pre-wrap' }}>{userData.bio}</Text>
+              <div style={{ padding: '12px 16px' }}>
+                <Text style={{ whiteSpace: 'pre-wrap', color: 'var(--vkui--color_text_primary)' }}>{userData.bio}</Text>
               </div>
             )}
 
             {!hasCustomProfileData && (
-              <div style={{ padding: '0 16px 16px' }}>
-                <Text style={{ color: 'var(--vkui--color_text_secondary)' }}>
-                  Пока заполнены только базовые данные из VK. Нажми «Редактировать» вверху экрана, чтобы добавить описание, контакты, домашнюю локацию и предпочтения.
-                </Text>
-              </div>
+              <Placeholder
+                icon={<Icon28ArticleOutline width={48} height={48} />}
+                style={{ padding: '20px 0' }}
+              >
+                Профиль пуст. Добавьте информацию о себе для доверия других участников.
+              </Placeholder>
             )}
 
             {(userData?.contactPhone || userData?.contactTelegram || userData?.contactEmail) && (
-              <div style={{ padding: '0 16px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {userData.contactPhone && (
-                  <Text>Телефон: {userData.contactPhone}</Text>
+                  <Text weight="2" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    📞 {userData.contactPhone}
+                  </Text>
                 )}
                 {userData.contactTelegram && (
-                  <Text>Telegram: {userData.contactTelegram}</Text>
+                  <Text weight="2" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    ✈️ {userData.contactTelegram}
+                  </Text>
                 )}
                 {userData.contactEmail && (
-                  <Text>Email: {userData.contactEmail}</Text>
+                  <Text weight="2" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    📧 {userData.contactEmail}
+                  </Text>
                 )}
               </div>
             )}
 
             {userData?.preferences && userData.preferences.length > 0 && (
-              <div style={{ padding: '0 16px 16px' }}>
-                <Text weight="2" style={{ marginBottom: 8 }}>
-                  Предпочтения
-                </Text>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-                  {userData.preferences.map((preference) => (
-                    <Badge key={preference} mode="new">
+              <div style={{ padding: '16px' }}>
+                <Title level="3" weight="2" style={{ fontSize: 16, marginBottom: 12 }}>Предпочтения</Title>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {userData.preferences.map((preference: string) => (
+                    <Badge key={preference} mode="new" style={{ padding: '6px 12px', borderRadius: 8 }}>
                       {preference}
                     </Badge>
                   ))}
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </Group>
 

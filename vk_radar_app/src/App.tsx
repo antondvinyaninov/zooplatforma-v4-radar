@@ -82,20 +82,14 @@ const AppContent = () => {
         popout={popout}
         modal={
           <ModalRoot activeModal={activeModal || null} onClose={() => routeNavigator.hideModal()}>
-            {/* Модалки будут рендериться внутри панелей или централизованно здесь */}
             <Radar id={DEFAULT_VIEW_PANELS.RADAR} isModalRoot />
-            <List id={DEFAULT_VIEW_PANELS.LIST} />
             <MyAds id={DEFAULT_VIEW_PANELS.MY_ADS} isModalRoot />
-            <CreateAd id={DEFAULT_VIEW_PANELS.CREATE_AD} />
-            <Profile id={DEFAULT_VIEW_PANELS.PROFILE} />
-            <Moderation id={DEFAULT_VIEW_PANELS.MODERATION} />
-            <AppSettings id={DEFAULT_VIEW_PANELS.SETTINGS} />
           </ModalRoot>
         }
       >
         <SplitCol>
           <Epic
-            activeStory={activePanel}
+            activeStory="main_view"
             tabbar={
               <Tabbar style={{ 
                 paddingBottom: 'env(safe-area-inset-bottom)',
@@ -134,7 +128,7 @@ const AppContent = () => {
               </Tabbar>
             }
           >
-            <View id={activePanel} activePanel={activePanel}>
+            <View id="main_view" activePanel={activePanel}>
               <Radar id={DEFAULT_VIEW_PANELS.RADAR} />
               <List id={DEFAULT_VIEW_PANELS.LIST} />
               <MyAds id={DEFAULT_VIEW_PANELS.MY_ADS} />
