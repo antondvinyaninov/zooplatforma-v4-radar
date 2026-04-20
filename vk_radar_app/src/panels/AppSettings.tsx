@@ -119,7 +119,7 @@ export const AppSettings = ({ id }: { id: string }) => {
               id="city"
               placeholder="Начните вводить название города"
               searchable
-              onInputChange={(val) => searchCities(val)}
+              onInputChange={(e) => searchCities(e.target.value)}
               options={cities.map(c => ({ label: c.title, value: c.id }))}
               filterFn={false}
               fetching={isSearchingCities}
